@@ -1,0 +1,624 @@
+<title>Hello Claude</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper:#F1F2EE; --surface:#FBFBF9; --raised:#FFFFFF;
+    --ink:#16211E; --muted:#5C6B66; --faint:#8A9791;
+    --line:#DEE1DB; --line-strong:#CDD2CA;
+    --accent:#1C6B57; --accent-ink:#124336; --accent-soft:#E4EFE9; --accent-2:#B7791F;
+    --focus:#1C6B57;
+    --doc-bg:#161D1B; --doc-panel:#1C2523; --doc-fg:#E7ECE7; --doc-muted:#8FA39C;
+    --doc-accent:#5FC7A6; --doc-brass:#E0B25C; --doc-line:#2C3936; --doc-strike:#3A4A46;
+    --shadow:0 1px 2px rgba(18,32,28,.05), 0 8px 28px -12px rgba(18,32,28,.16);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#101513; --surface:#161D1B; --raised:#1B2422;
+      --ink:#E7ECE7; --muted:#9DAAA4; --faint:#6E7C77;
+      --line:#26302D; --line-strong:#313D39;
+      --accent:#4FBE9C; --accent-ink:#8FE0C8; --accent-soft:#18302A; --accent-2:#D6A24F;
+      --focus:#4FBE9C;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.55);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#101513; --surface:#161D1B; --raised:#1B2422;
+    --ink:#E7ECE7; --muted:#9DAAA4; --faint:#6E7C77;
+    --line:#26302D; --line-strong:#313D39;
+    --accent:#4FBE9C; --accent-ink:#8FE0C8; --accent-soft:#18302A; --accent-2:#D6A24F;
+    --focus:#4FBE9C;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.55);
+    color-scheme: dark;
+  }
+
+  * { box-sizing:border-box; }
+  html,body { height:100%; }
+  body { margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  ::selection { background:var(--accent-soft); }
+  h1,h2,h3 { font-family:"Fraunces", Georgia, serif; font-weight:600; text-wrap:balance; margin:0; }
+  button { font-family:inherit; }
+  a { color:var(--accent); }
+
+  .app { display:flex; flex-direction:column; min-height:100vh; }
+  header.bar { display:flex; align-items:center; gap:16px; padding:14px 22px; border-bottom:1px solid var(--line); background:var(--surface); position:sticky; top:0; z-index:10; }
+  .wordmark { display:flex; align-items:baseline; gap:9px; }
+  .wordmark .hi { font-family:"Fraunces"; font-weight:600; font-size:22px; letter-spacing:-.01em; }
+  .wordmark .hi em { font-style:italic; color:var(--accent); }
+  .wordmark .tag { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); padding-bottom:2px; }
+  .bar-spacer { flex:1; }
+  .steps-mini { display:flex; gap:6px; align-items:center; }
+  .steps-mini .dot { width:7px; height:7px; border-radius:50%; background:var(--line-strong); transition:.25s; }
+  .steps-mini .dot.done { background:var(--accent); }
+  .steps-mini .dot.current { background:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+  .iconbtn { display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border:1px solid var(--line); border-radius:9px; background:var(--raised); color:var(--muted); cursor:pointer; transition:.18s; }
+  .iconbtn:hover { color:var(--ink); border-color:var(--line-strong); }
+
+  main.split { flex:1; display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.08fr); min-height:0; }
+  @media (max-width:900px){ main.split { grid-template-columns:1fr; } }
+
+  .interview { padding:30px clamp(20px,4vw,48px) 40px; display:flex; flex-direction:column; }
+  .interview-inner { width:100%; max-width:552px; margin:0 auto; flex:1; display:flex; flex-direction:column; }
+  .eyebrow { font-size:11px; letter-spacing:.15em; text-transform:uppercase; color:var(--accent); font-weight:600; }
+  .step-head { margin:10px 0 4px; }
+  .step-head h2 { font-size:clamp(24px,3.4vw,31px); letter-spacing:-.015em; }
+  .step-sub { color:var(--muted); font-size:14.5px; margin:6px 0 22px; max-width:50ch; }
+
+  /* intro / welcome */
+  .intro-lede { font-size:16px; color:var(--ink); line-height:1.6; max-width:52ch; margin:2px 0 20px; }
+  .intro-lede strong { font-weight:600; }
+  .filecards { display:flex; flex-direction:column; gap:10px; margin-bottom:20px; }
+  .filecard { display:flex; gap:13px; align-items:flex-start; padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
+  .filecard .fc-ic { flex:none; width:34px; height:34px; border-radius:8px; background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:12px; }
+  .filecard b { font-family:"IBM Plex Mono", monospace; font-size:13px; font-weight:600; }
+  .filecard p { margin:2px 0 0; color:var(--muted); font-size:13px; line-height:1.45; }
+  .reassure { display:flex; gap:9px; align-items:flex-start; color:var(--faint); font-size:13px; margin-bottom:6px; }
+  .reassure svg { flex:none; margin-top:2px; }
+
+  .field { margin-bottom:22px; }
+  .field > label.q, .field > .q { display:block; font-weight:500; margin-bottom:9px; font-size:14.5px; }
+  .field .hint { color:var(--faint); font-size:12.5px; margin-top:-4px; margin-bottom:9px; line-height:1.45; }
+  input[type=text], textarea { width:100%; padding:11px 13px; border:1px solid var(--line-strong); border-radius:10px; background:var(--raised); color:var(--ink); font:inherit; font-size:14.5px; transition:.16s; }
+  textarea { resize:vertical; min-height:74px; line-height:1.5; }
+  input::placeholder, textarea::placeholder { color:var(--faint); }
+  input:focus, textarea:focus, .opt:focus-visible, button:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+  input:focus, textarea:focus { outline-offset:0; border-color:var(--accent); }
+
+  .pathrow { display:flex; gap:8px; }
+  .pathrow input { flex:1; }
+  .browsebtn { flex:none; display:inline-flex; align-items:center; gap:7px; padding:0 15px; border:1px solid var(--line-strong); border-radius:10px; background:var(--surface); color:var(--ink); font-size:13.5px; font-weight:500; cursor:pointer; transition:.16s; }
+  .browsebtn:hover { border-color:var(--accent); color:var(--accent); }
+  .browse-note { color:var(--faint); font-size:12px; margin-top:8px; display:none; }
+  .browse-note.show { display:block; }
+
+  .opts { display:flex; flex-direction:column; gap:9px; }
+  .opts.row { flex-direction:row; flex-wrap:wrap; }
+  .opt { display:flex; align-items:flex-start; gap:11px; padding:12px 14px; cursor:pointer; border:1px solid var(--line-strong); border-radius:11px; background:var(--raised); transition:.16s; }
+  .opts.row .opt { flex:1; min-width:120px; }
+  .opt:hover { border-color:var(--accent); background:var(--surface); }
+  .opt.sel { border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent); }
+  .opt .mark { flex:none; width:18px; height:18px; border-radius:50%; border:2px solid var(--line-strong); margin-top:1px; transition:.16s; display:grid; place-items:center; }
+  .opt.sel .mark { border-color:var(--accent); }
+  .opt.sel .mark::after { content:""; width:8px; height:8px; border-radius:50%; background:var(--accent); }
+  .opt .otxt { display:flex; flex-direction:column; gap:2px; }
+  .opt .otxt b { font-weight:600; font-size:14px; }
+  .opt .otxt span { color:var(--muted); font-size:12.5px; line-height:1.4; }
+  .opt .rec { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:600; }
+
+  .toggle-row { display:flex; align-items:center; gap:12px; padding:13px 0; border-top:1px solid var(--line); }
+  .toggle-row.first { border-top:none; }
+  .toggle-row .tinfo { flex:1; }
+  .toggle-row .tinfo b { font-weight:500; font-size:14px; display:block; }
+  .toggle-row .tinfo span { color:var(--muted); font-size:12.5px; line-height:1.4; }
+  .sw { flex:none; width:42px; height:24px; border-radius:20px; background:var(--line-strong); position:relative; cursor:pointer; transition:.18s; border:none; }
+  .sw::after { content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:.18s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+  .sw.on { background:var(--accent); }
+  .sw.on::after { transform:translateX(18px); }
+
+  .nav { display:flex; align-items:center; gap:12px; margin-top:auto; padding-top:26px; }
+  .btn { display:inline-flex; align-items:center; gap:8px; padding:11px 20px; border-radius:10px; font-weight:600; font-size:14px; cursor:pointer; border:1px solid transparent; transition:.16s; }
+  .btn.primary { background:var(--accent); color:#fff; }
+  .btn.primary:hover { filter:brightness(1.06); }
+  .btn.ghost { background:transparent; color:var(--muted); border-color:var(--line-strong); }
+  .btn.ghost:hover { color:var(--ink); border-color:var(--muted); }
+  .btn.seal { background:var(--accent-2); color:#fff; }
+  .btn.seal:hover { filter:brightness(1.05); }
+  .btn[disabled]{ opacity:.4; cursor:not-allowed; }
+  .nav .spacer { flex:1; }
+  .nav .stepno { font-size:12.5px; color:var(--faint); font-variant-numeric:tabular-nums; }
+
+  .mode-teaser { margin-top:18px; padding:12px 14px; border:1px dashed var(--line-strong); border-radius:11px; display:flex; align-items:flex-start; gap:11px; color:var(--muted); font-size:12.5px; line-height:1.5; background:transparent; }
+  .mode-teaser .spark { color:var(--accent-2); font-size:15px; line-height:1.2; }
+  .mode-teaser b { color:var(--ink); font-weight:600; }
+
+  .preview { background:var(--doc-bg); color:var(--doc-fg); display:flex; flex-direction:column; min-height:0; border-left:1px solid var(--line); }
+  .preview-bar { display:flex; align-items:center; gap:10px; padding:12px 18px 10px; color:var(--doc-muted); font-family:"IBM Plex Mono", monospace; font-size:12px; }
+  .preview-bar .fname { color:var(--doc-fg); }
+  .preview-bar .live { display:inline-flex; align-items:center; gap:6px; color:var(--doc-accent); }
+  .preview-bar .live .pulse { width:7px; height:7px; border-radius:50%; background:var(--doc-accent); animation:pulse 1.8s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .preview-bar .pv-spacer { flex:1; }
+  .copybtn { border:1px solid var(--doc-line); background:var(--doc-panel); color:var(--doc-muted); border-radius:8px; padding:6px 12px; font-family:"IBM Plex Mono",monospace; font-size:11.5px; cursor:pointer; transition:.16s; }
+  .copybtn:hover { color:var(--doc-fg); border-color:var(--doc-strike); }
+  .copybtn.ok { color:var(--doc-accent); border-color:var(--doc-accent); }
+  .preview-cap { padding:0 18px 11px; border-bottom:1px solid var(--doc-line); color:var(--doc-muted); font-size:12px; line-height:1.5; }
+  .preview-cap b { color:var(--doc-fg); font-weight:500; }
+
+  .doc { flex:1; overflow:auto; padding:20px clamp(18px,2.4vw,30px) 60px; font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:12.9px; line-height:1.72; }
+  .doc-sec { display:block; padding:3px 10px; margin:0 -10px; border-radius:7px; transition:background .5s; }
+  .doc-sec.flash { background:rgba(95,199,166,.13); }
+  .doc .h1 { color:var(--doc-fg); font-weight:600; font-size:14.5px; }
+  .doc .h2 { color:var(--doc-accent); font-weight:600; margin-top:2px; }
+  .doc .q  { color:var(--doc-muted); }
+  .doc .b  { color:var(--doc-fg); }
+  .doc .li { color:var(--doc-fg); padding-left:16px; text-indent:-10px; }
+  .doc .cmt { color:var(--doc-muted); font-style:italic; }
+  .doc .strong { color:var(--doc-fg); font-weight:600; }
+  .doc .blank { height:9px; }
+
+  .summary { border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:4px 16px; margin-bottom:20px; }
+  .summary .row { display:flex; justify-content:space-between; gap:16px; padding:11px 0; border-top:1px solid var(--line); font-size:13.5px; }
+  .summary .row:first-child { border-top:none; }
+  .summary .row .k { color:var(--muted); }
+  .summary .row .v { color:var(--ink); font-weight:500; text-align:right; }
+  .writelist { list-style:none; padding:0; margin:14px 0 0; display:flex; flex-direction:column; gap:9px; }
+  .writelist li { display:flex; gap:10px; align-items:flex-start; font-size:13px; color:var(--muted); line-height:1.45; }
+  .writelist li code { font-family:"IBM Plex Mono",monospace; color:var(--ink); font-size:12px; background:var(--accent-soft); padding:1px 6px; border-radius:5px; }
+  .writelist .tick { color:var(--accent); flex:none; margin-top:1px; }
+  .note-private { color:var(--faint); font-size:12px; margin-top:14px; display:flex; gap:8px; align-items:flex-start; line-height:1.45; }
+
+  .foot { padding:9px 22px; border-top:1px solid var(--line); background:var(--surface); color:var(--faint); font-size:11.5px; display:flex; gap:8px; align-items:center; }
+
+  @media (prefers-reduced-motion: reduce){ *{ animation:none!important; transition:none!important; } }
+  @media (max-width:900px){
+    .preview { border-left:none; border-top:1px solid var(--line); max-height:50vh; }
+    .steps-mini{ display:none; }
+  }
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="wordmark"><span class="hi">Hello, <em>Claude</em></span><span class="tag">Project Setup</span></div>
+    <div class="bar-spacer"></div>
+    <div class="steps-mini" id="stepsMini" aria-hidden="true"></div>
+    <button class="iconbtn" id="themeBtn" title="Toggle light/dark" aria-label="Toggle light/dark">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v2M12 19v2M5 12H3M21 12h-2M6 6 4.5 4.5M18 6l1.5-1.5M6 18l-1.5 1.5M18 18l1.5 1.5"/><circle cx="12" cy="12" r="4"/></svg>
+    </button>
+  </header>
+
+  <main class="split">
+    <section class="interview">
+      <div class="interview-inner">
+        <div class="eyebrow" id="eyebrow">Welcome</div>
+        <div class="step-head"><h2 id="stepTitle">—</h2></div>
+        <p class="step-sub" id="stepSub"></p>
+        <div id="stepBody"></div>
+        <div class="nav">
+          <button class="btn ghost" id="backBtn">Back</button>
+          <div class="spacer"></div>
+          <span class="stepno" id="stepNo"></span>
+          <button class="btn primary" id="nextBtn">Continue</button>
+        </div>
+        <div class="mode-teaser">
+          <span class="spark">✦</span>
+          <div><b>“Interview me” mode</b> — instead of a form, Claude chats with you, asks the questions itself, and adapts to your answers. It's optional (it needs a Claude API key) and arrives once this form version is polished.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="preview" aria-label="Live preview of your CLAUDE.md file">
+      <div class="preview-bar">
+        <span class="fname">CLAUDE.md</span>
+        <span class="live"><span class="pulse"></span>live</span>
+        <div class="pv-spacer"></div>
+        <button class="copybtn" id="copyBtn">Copy</button>
+      </div>
+      <div class="preview-cap">This is the <b>CLAUDE.md</b> file taking shape as you answer — a plain text file your AI coding tool reads automatically at the start of every session, so you don't have to repeat yourself.</div>
+      <div class="doc" id="doc"></div>
+    </section>
+  </main>
+
+  <div class="foot"><span>Hello Claude runs entirely on your own computer — nothing you type here is uploaded anywhere.</span></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const STEPS = [
+    { id:"intro", eyebrow:"Welcome", title:"Let's set up how Claude works with you.", intro:true },
+
+    { id:"you", eyebrow:"About you", title:"Who is Claude helping?",
+      sub:"Claude does better when it knows a little about you. Your answers here set the tone it writes in and go into a private note saved only on your computer — never uploaded, and never added to the shared project files.",
+      fields:[
+        { k:"name", type:"text", q:"What should Claude call you?", ph:"e.g. Gene" },
+        { k:"role", type:"text", q:"What do you do?", hint:"Optional. Helps Claude pitch explanations at the right level.", ph:"e.g. Founder · solo developer · student" },
+        { k:"domains", type:"textarea", q:"Is there anything you know deeply?", hint:"Optional. If you're already an expert in something — design, databases, security — say so, and Claude won't over-explain it to you.", ph:"e.g. Design; disaster recovery; live-streaming" },
+      ]},
+
+    { id:"project", eyebrow:"This project", title:"What are you working on?",
+      sub:"A little context so the rules fit this project — and so Claude pitches things at your level. Everything here is optional.",
+      fields:[
+        { k:"projDesc", type:"textarea", q:"In a sentence or two, what are you building?", hint:"Optional. Helps Claude understand the goal behind your requests.", ph:"e.g. A booking site for a small dental office" },
+        { k:"langs", type:"text", q:"What languages or tools does it mainly use?", hint:"Optional. Not sure? Leave it blank — Claude can work it out from your files.", ph:"e.g. Python · React + TypeScript · “not sure yet”" },
+        { k:"experience", type:"choice", q:"How would you describe your coding experience?", opts:[
+          { v:"new", b:"New to this", s:"Claude explains as it goes and teaches the why, not just the how." },
+          { v:"comfortable", b:"Comfortable", s:"Claude explains the non-obvious and skips the basics.", rec:true },
+          { v:"experienced", b:"Very experienced", s:"Claude stays concise and technical — no hand-holding." },
+        ]},
+        { k:"brandkit", type:"textarea", q:"Do you have a brand kit or design guidelines?", hint:"Optional. If yes, point Claude to it — a file, a link, or a few notes (colors, fonts, logo) — so anything it designs matches your look instead of guessing.", ph:"e.g. the brand/ folder in this repo · “navy + gold, Inter font, logo in /assets”" },
+      ]},
+
+    { id:"authority", eyebrow:"Making choices", title:"When should Claude check with you first?",
+      sub:"Some choices are hard to undo later — like which database to use, how the project is organized, or what things are named. This sets how much Claude decides on its own.",
+      fields:[
+        { k:"authority", type:"choice", q:"For a choice that's hard to reverse later, Claude should…", opts:[
+          { v:"options", b:"Show me the options and its pick, then wait for my “yes”", s:"You stay in control of the big calls.", rec:true },
+          { v:"default", b:"Choose a sensible option and tell me what it picked", s:"Faster, but it decides for you." },
+          { v:"auto", b:"Just go with its best judgment", s:"Most hands-off — fewest interruptions." },
+        ]},
+        { k:"signoff", type:"choice", q:"Before it starts writing code or locks in a plan…", opts:[
+          { v:"yes", b:"Check with me first", s:"It shows you the plan, you approve, then it builds.", rec:true },
+          { v:"confident", b:"Go ahead when it's confident", s:"It only pauses on the really big decisions." },
+        ]},
+      ]},
+
+    { id:"comm", eyebrow:"Style", title:"How should Claude talk to you?",
+      sub:"Just the writing style. You can always tell it to change on the fly.",
+      fields:[
+        { k:"tone", type:"choice", row:true, q:"Pick a tone", opts:[
+          { v:"warm", b:"Friendly", s:"Warm and personable.", rec:true },
+          { v:"neutral", b:"Professional", s:"Clear and straightforward." },
+          { v:"terse", b:"Brief", s:"Short and to the point." },
+        ]},
+        { k:"brake", type:"choice", q:"If Claude thinks you're about to make a mistake, should it speak up?", opts:[
+          { v:"yes", b:"Yes — tell me", s:"Even if I didn't ask. A second opinion before I commit.", rec:true },
+          { v:"asked", b:"Only if I ask", s:"Otherwise, just do what I said." },
+        ]},
+      ]},
+
+    { id:"status", eyebrow:"Keeping track", title:"How does Claude know what's done?",
+      sub:"This stops Claude from claiming something's finished when it isn't — or forgetting where you left off between sessions.",
+      fields:[
+        { k:"sot", type:"choice", q:"When Claude needs to know the current state of things, it should trust…", opts:[
+          { v:"docs", b:"The actual project files and written notes", s:"The real code and docs — not its own memory, which can fall out of date.", rec:true },
+          { v:"ask", b:"Whatever I tell it", s:"You're the record-keeper." },
+        ]},
+        { k:"done", type:"choice", q:"Claude can mark a task “done”…", opts:[
+          { v:"confirm", b:"Only after I confirm it", s:"It won't check things off on its own.", rec:true },
+          { v:"looks", b:"When it looks finished", s:"It can decide for itself." },
+        ]},
+      ]},
+
+    { id:"repo", eyebrow:"Publishing", title:"How do your changes go live?",
+      sub:"This helps Claude be careful. In some setups, saving a change publishes it to real users immediately — Claude should know if that's you.",
+      fields:[
+        { k:"repos", type:"choice", row:true, q:"Is this one project, or several that work together?", opts:[
+          { v:"single", b:"Just one", s:"" },
+          { v:"multi", b:"Several", s:"" },
+        ]},
+        { k:"deploy", type:"choice", q:"When you save changes to the main version, do they go live to real users automatically?", opts:[
+          { v:"yes", b:"Yes — saving to “main” publishes it live", s:"Claude will treat every such change as going straight to real users." },
+          { v:"no", b:"No — going live is a separate step I do myself", s:"There's a safety gap between saving and publishing." },
+          { v:"unsure", b:"I'm not sure", s:"No problem — Claude will play it safe and treat it as if it's live." },
+        ]},
+        { k:"flow", type:"choice", q:"When Claude changes code, how should those changes land?", opts:[
+          { v:"branch", b:"On a separate copy for me to review first, then combine in", s:"A safety check before anything joins your main project.", rec:true },
+          { v:"direct", b:"Straight into the main project is fine", s:"No review step." },
+        ]},
+      ]},
+
+    { id:"safety", eyebrow:"Safety", title:"Protecting your work from accidents.",
+      sub:"A couple of habits that stop Claude from overwriting or deleting something by mistake. Both are worth keeping on.",
+      fields:[
+        { k:"validate", type:"toggle", q:"Double-check before changing or replacing a file", s:"Claude prepares and checks the new version before touching the original, so a slip-up can't wipe out what's there.", def:true },
+        { k:"confirmDestructive", type:"toggle", q:"Warn me before anything that deletes or overwrites", s:"Commands that erase files, throw away changes, or reset things get shown to you first — before they run.", def:true },
+      ]},
+
+    { id:"memory", eyebrow:"Notes", title:"Should Claude keep notes between sessions?",
+      sub:"Claude starts fresh each time you open it, unless it has notes to read. This is only about whether you keep any.",
+      fields:[
+        { k:"memory", type:"toggle", q:"I keep notes that Claude should read and update", s:"Claude keeps them matching the real project, and treats the project's own files as the final word.", def:true },
+        { k:"docvsmem", type:"toggle", q:"When a new idea comes up, ask me where to save it", s:"Instead of guessing whether it belongs in a permanent doc or a quick note.", def:true },
+      ]},
+
+    { id:"extras", eyebrow:"Finishing up", title:"A couple of finishing touches.",
+      sub:"Optional extras, and then where to save your files.",
+      fields:[
+        { k:"daterots", type:"toggle", q:"Remind Claude to date notes that can go out of date", s:"So a note written today isn't mistaken for still-true a year from now.", def:true },
+        { k:"stack", type:"textarea", q:"Does your project use anything new or unusual?", hint:"Optional. Claude learned from information up to a certain date, so it can be behind on brand-new tools or recent versions. If part of your project changed recently or works differently than expected, tell it here — Claude will read this before assuming.", ph:"e.g. We use version 3 of the framework, which changed how pages are built — check the local docs before writing code." },
+        { k:"path", type:"path", q:"Where should the files be saved?", hint:"Choose the main folder of the project you want to set up.", ph:"e.g. C:\\Users\\you\\my-project" },
+      ]},
+
+    { id:"seal", eyebrow:"All set", title:"Ready — here's what gets created.",
+      sub:"In this preview, use the Copy button on the right to grab your CLAUDE.md. The finished tool saves every file into your folder for you.",
+      review:true, fields:[] },
+  ];
+
+  const A = {
+    name:"", role:"", domains:"",
+    projDesc:"", langs:"", experience:"comfortable", brandkit:"",
+    authority:"options", signoff:"yes",
+    tone:"warm", brake:"yes",
+    sot:"docs", done:"confirm",
+    repos:"single", deploy:"unsure", flow:"branch",
+    validate:true, confirmDestructive:true,
+    memory:true, docvsmem:true,
+    daterots:true, stack:"", path:"",
+  };
+  let step = 0;
+
+  function nameOwner(){ return (A.name.trim() || "The owner"); }
+  function possessive(){ const n=A.name.trim(); return n ? n : "the owner"; }
+
+  function genContract(){
+    const S=[]; const sec=(id,lines)=>S.push({id,lines});
+    const L=(c,t)=>({c,t}); const blank=()=>({c:"blank",t:""});
+    const today=new Date().toISOString().slice(0,10);
+
+    sec("head",[
+      L("h1","# How we work — operating contract (binds every session, any model)"),
+      blank(),
+      L("cmt","> Generated by Hello Claude · "+today+(A.name.trim()?(" · personalized for "+A.name.trim()):"")),
+      blank(),
+      L("strong","**These rules OVERRIDE default behavior and MUST be followed.**"),
+      L("b","They live in the always-loaded project instructions on purpose — so they bind regardless"),
+      L("b","of which model is running or whether memory happens to load."),
+    ]);
+
+    const pj=[L("h2","## This project")];
+    if (A.projDesc.trim()) pj.push(L("li","- What this is: "+A.projDesc.trim()));
+    if (A.langs.trim()) pj.push(L("li","- Primary languages / tools: "+A.langs.trim()+" — follow their conventions and idioms."));
+    if (A.experience==="new") pj.push(L("li","- Assume limited coding experience — explain the reasoning and teach as you go; don't just hand over code."));
+    else if (A.experience==="experienced") pj.push(L("li","- Assume strong coding fluency — be concise and technical; skip the basics."));
+    else pj.push(L("li","- Assume comfortable coding experience — explain the non-obvious, skip the basics."));
+    if (A.brandkit.trim()) pj.push(L("li","- Brand & design: match the brand kit / guidelines — "+A.brandkit.trim()+". Don't invent brand choices; ask if unsure."));
+    sec("project",pj);
+
+    const d=[];
+    if (A.authority==="options"){
+      d.push(L("h2","## "+nameOwner()+" decides. You bring options + a recommendation, then STOP."));
+      d.push(L("li","- Do not assume, pick a default, or proceed on anything that lasts — architecture,"));
+      d.push(L("li","  schema, data model, vendors, naming, IDs. Lay out options, recommend one, wait for a yes."));
+    } else if (A.authority==="default"){
+      d.push(L("h2","## Decisions & autonomy"));
+      d.push(L("li","- For durable choices, pick a sensible default and tell "+possessive()+" what you chose and why."));
+    } else {
+      d.push(L("h2","## Decisions & autonomy"));
+      d.push(L("li","- Move with autonomy on durable choices; surface only what's genuinely hard to reverse."));
+    }
+    if (A.signoff==="yes") d.push(L("li","- Scope → clear → build. Do not write code or commit to a plan until it's signed off."));
+    else d.push(L("li","- Proceed when confident; pause for sign-off only on the big, hard-to-reverse forks."));
+    if (A.brake==="yes") d.push(L("li","- Be the brake. Name scope creep and questionable calls; don't just comply."));
+    d.push(L("li","- One thread at a time. Finish and confirm the current thing before starting another."));
+    sec("decisions",d);
+
+    const st=[L("h2","## Status vs. decisions")];
+    if (A.sot==="docs"){
+      st.push(L("li","- The committed docs + the code are the source of truth for status. Memory is a mirror,"));
+      st.push(L("li","  and it drifts — trust docs and code over memory."));
+    } else st.push(L("li","- Ask "+possessive()+" for current status; there's no committed record to trust over memory."));
+    if (A.done==="confirm") st.push(L("li","- Mark a task done only on explicit confirmation — never on your own assessment."));
+    else st.push(L("li","- You may mark work done when it looks complete; confirm if unsure."));
+    if (A.memory && A.docvsmem) st.push(L("li","- On a sparked idea, ask \"doc or memory?\" — don't auto-decide its home."));
+    sec("status",st);
+
+    if (A.daterots) sec("daterots",[
+      L("h2","## Date what rots. Check what you're standing on."),
+      L("li","- Date the entries that go stale — decisions, status claims, instructions to future-you."),
+      L("li","- ⭐ Record the dependency, not just the date, when an entry rests on something outside"),
+      L("li","  your control (a vendor, a platform, an API). Naming it is what warns the next reader."),
+    ]);
+
+    const hy=[L("h2","## Build / commit / repo hygiene")];
+    hy.push(L("li","- Run git status before committing; review the diff and scan for secrets before every commit."));
+    if (A.deploy==="yes"||A.deploy==="unsure") hy.push(L("li","- ⚠ Treat main as LIVE — a push to main reaches real users. Never push untested to main."));
+    if (A.flow==="branch"){ const sc=(A.deploy==="yes"||A.deploy==="unsure")?" (production only changes when the owner says so)":""; hy.push(L("li","- Code changes go branch → owner reviews → merge"+sc+".")); }
+    else hy.push(L("li","- Direct commits to main are fine for ordinary work."));
+    if (A.repos==="multi") hy.push(L("li","- Multiple repos: confirm you're in the right one before any commit or deploy."));
+    hy.push(L("li","- Bugs → a BUG-LOG.md (symptom → cause → fix + commit). Ship a QA checklist with each feature."));
+    sec("hygiene",hy);
+
+    if (A.validate||A.confirmDestructive){
+      const ds=[L("h2","## Never destroy data. Validate before any write.")];
+      if (A.validate){
+        ds.push(L("b","Most write paths destroy first and validate never — w / > / Out-File / sed -i, and heredocs"));
+        ds.push(L("b","piped into an interpreter, all truncate the target at OPEN. Build and encode the full output"));
+        ds.push(L("b","before the target is opened; assert it looks right; verify after. A shell \"unexpected EOF\" is"));
+        ds.push(L("b","NOT proof nothing ran — verify the file before retrying."));
+      }
+      if (A.confirmDestructive) ds.push(L("li","- Show genuinely destructive commands (rm -rf, git reset --hard, > over a file, DROP/DELETE) first."));
+      sec("safety",ds);
+    }
+
+    if (A.authority==="options"||A.signoff==="yes") sec("ask",[
+      L("h2","## When in doubt, ASK."),
+      L("b","A pause to confirm is never the wrong move; running ahead is."),
+    ]);
+
+    if (A.stack.trim()) sec("stack",[ L("h1","---"), blank(), L("h1","# Stack note"), L("b",A.stack.trim()) ]);
+
+    if (A.memory) sec("memfoot",[
+      blank(),
+      L("cmt","> The deeper context — who you are, how you work — lives in the local memory files"),
+      L("cmt","> (private, not committed). Read them. But this contract binds even when they are not loaded."),
+    ]);
+
+    return S;
+  }
+
+  const doc=document.getElementById("doc");
+  function renderDoc(flashId){
+    const S=genContract(); doc.innerHTML="";
+    S.forEach(section=>{
+      const w=document.createElement("div"); w.className="doc-sec"; w.dataset.sec=section.id;
+      section.lines.forEach(ln=>{ const el=document.createElement("div"); el.className= ln.c==="blank"?"blank":ln.c; if(ln.c!=="blank") el.textContent=ln.t; w.appendChild(el); });
+      doc.appendChild(w);
+    });
+    if (flashId){ const t=doc.querySelector('[data-sec="'+flashId+'"]'); if(t){ t.classList.add("flash"); setTimeout(()=>t.classList.remove("flash"),650); } }
+  }
+
+  const FIELD_SEC={ name:"head",role:"head",domains:"head",projDesc:"project",langs:"project",experience:"project",brandkit:"project",authority:"decisions",signoff:"decisions",brake:"decisions",tone:"head",sot:"status",done:"status",docvsmem:"status",repos:"hygiene",deploy:"hygiene",flow:"hygiene",validate:"safety",confirmDestructive:"safety",memory:"memfoot",daterots:"daterots",stack:"stack" };
+
+  const body=document.getElementById("stepBody");
+  function renderStep(){
+    const s=STEPS[step];
+    document.getElementById("eyebrow").textContent=s.eyebrow;
+    document.getElementById("stepTitle").textContent=s.title;
+    document.getElementById("stepSub").textContent=s.sub||"";
+    document.getElementById("stepSub").style.display = s.sub? "block":"none";
+    document.getElementById("stepNo").textContent="Step "+step+" of "+(STEPS.length-1);
+    document.getElementById("stepNo").style.visibility = s.intro? "hidden":"visible";
+    document.getElementById("backBtn").disabled = step===0;
+    const next=document.getElementById("nextBtn");
+    next.className="btn "+(s.review?"seal":"primary");
+    next.textContent = s.intro? "Let's go" : s.review? "Copy & finish" : s.id==="extras"? "Review" : "Continue";
+
+    body.innerHTML="";
+    if (s.intro) body.appendChild(renderIntro());
+    else if (s.review) body.appendChild(renderReview());
+    else s.fields.forEach(f=> body.appendChild(renderField(f)));
+
+    renderMini();
+    const fi=body.querySelector("input,textarea"); if(fi) setTimeout(()=>fi.focus(),40);
+  }
+
+  function renderIntro(){
+    const f=document.createDocumentFragment();
+    const lede=document.createElement("p"); lede.className="intro-lede";
+    lede.innerHTML="AI coding tools look for two files in your project and read them <strong>automatically, every time they start</strong>. Think of them as a note you leave for your AI helper — how you like to work, what to ask before doing, what never to touch.";
+    f.appendChild(lede);
+    const cards=document.createElement("div"); cards.className="filecards";
+    [["CLAUDE.md","Your instructions for Claude Code — read at the start of every session."],
+     ["AGENTS.md","The exact same instructions, in the file other AI coding tools look for."]].forEach(([n,d])=>{
+      const c=document.createElement("div"); c.className="filecard";
+      const ic=document.createElement("div"); ic.className="fc-ic"; ic.textContent=".md";
+      const tx=document.createElement("div"); const b=document.createElement("b"); b.textContent=n; const p=document.createElement("p"); p.textContent=d;
+      tx.appendChild(b); tx.appendChild(p); c.appendChild(ic); c.appendChild(tx); cards.appendChild(c);
+    });
+    f.appendChild(cards);
+    const lede2=document.createElement("p"); lede2.className="intro-lede";
+    lede2.innerHTML="This wizard asks you a handful of plain questions and writes both files for you. <strong>No experience needed</strong> — there are no wrong answers, and you can change them any time.";
+    f.appendChild(lede2);
+    const re=document.createElement("div"); re.className="reassure";
+    re.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span>Everything runs on your own computer. Nothing you type is uploaded.</span>';
+    f.appendChild(re);
+    return f;
+  }
+
+  function renderField(f){
+    const wrap=document.createElement("div"); wrap.className="field";
+    if (f.type==="text"||f.type==="textarea"||f.type==="path"){
+      const lab=document.createElement("label"); lab.className="q"; lab.textContent=f.q; wrap.appendChild(lab);
+      if (f.hint){ const h=document.createElement("div"); h.className="hint"; h.textContent=f.hint; wrap.appendChild(h); }
+      if (f.type==="path"){
+        const row=document.createElement("div"); row.className="pathrow";
+        const el=document.createElement("input"); el.type="text"; el.value=A[f.k]||""; el.placeholder=f.ph||"";
+        el.addEventListener("input",()=>{ A[f.k]=el.value; renderDoc(); });
+        const br=document.createElement("button"); br.className="browsebtn"; br.type="button";
+        br.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Browse…';
+        const note=document.createElement("div"); note.className="browse-note";
+        br.addEventListener("click",async()=>{
+          if (window.showDirectoryPicker){
+            try{ const h=await window.showDirectoryPicker(); A[f.k]=h.name; el.value=h.name; renderDoc();
+              note.textContent="Picked the “"+h.name+"” folder. In the installed tool, Browse fills in the full path automatically."; note.classList.add("show");
+            }catch(err){ if(err && err.name==="AbortError") return;
+              note.textContent="Your browser won't open a folder picker inside this preview. In the installed tool, Browse opens your system's native folder chooser — for now, just type the path."; note.classList.add("show"); }
+          } else { note.textContent="Folder picking opens natively in the installed tool. For this preview, type the path above."; note.classList.add("show"); }
+        });
+        row.appendChild(el); row.appendChild(br); wrap.appendChild(row); wrap.appendChild(note);
+      } else {
+        const el=document.createElement(f.type==="textarea"?"textarea":"input");
+        if (f.type==="text") el.type="text";
+        el.value=A[f.k]||""; el.placeholder=f.ph||"";
+        el.addEventListener("input",()=>{ A[f.k]=el.value; renderDoc(FIELD_SEC[f.k]); });
+        wrap.appendChild(el);
+      }
+    } else if (f.type==="choice"){
+      const lab=document.createElement("div"); lab.className="q"; lab.textContent=f.q; wrap.appendChild(lab);
+      const box=document.createElement("div"); box.className="opts"+(f.row?" row":"");
+      f.opts.forEach(o=>{
+        const opt=document.createElement("div"); opt.className="opt"+(A[f.k]===o.v?" sel":""); opt.tabIndex=0; opt.setAttribute("role","button");
+        const mark=document.createElement("div"); mark.className="mark"; opt.appendChild(mark);
+        const otxt=document.createElement("div"); otxt.className="otxt";
+        const b=document.createElement("b"); b.textContent=o.b; otxt.appendChild(b);
+        if (o.rec){ const r=document.createElement("span"); r.className="rec"; r.textContent="Recommended"; otxt.appendChild(r); }
+        if (o.s){ const sp=document.createElement("span"); sp.textContent=o.s; otxt.appendChild(sp); }
+        opt.appendChild(otxt);
+        const pick=()=>{ A[f.k]=o.v; box.querySelectorAll(".opt").forEach(x=>x.classList.remove("sel")); opt.classList.add("sel"); renderDoc(FIELD_SEC[f.k]); };
+        opt.addEventListener("click",pick);
+        opt.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); pick(); }});
+        box.appendChild(opt);
+      });
+      wrap.appendChild(box);
+    } else if (f.type==="toggle"){
+      const row=document.createElement("div"); row.className="toggle-row first";
+      const info=document.createElement("div"); info.className="tinfo";
+      const b=document.createElement("b"); b.textContent=f.q; info.appendChild(b);
+      if (f.s){ const sp=document.createElement("span"); sp.textContent=f.s; info.appendChild(sp); }
+      row.appendChild(info);
+      const sw=document.createElement("button"); sw.className="sw"+(A[f.k]?" on":""); sw.type="button"; sw.setAttribute("aria-pressed",!!A[f.k]);
+      sw.addEventListener("click",()=>{ A[f.k]=!A[f.k]; sw.classList.toggle("on",A[f.k]); sw.setAttribute("aria-pressed",A[f.k]); renderDoc(FIELD_SEC[f.k]); });
+      row.appendChild(sw); wrap.style.marginBottom="0"; wrap.appendChild(row);
+    }
+    return wrap;
+  }
+
+  function renderReview(){
+    const frag=document.createDocumentFragment();
+    const sum=document.createElement("div"); sum.className="summary";
+    const rows=[
+      ["Working with", A.name.trim()||"—"],
+      ["Coding experience", A.experience==="new"?"New to this":A.experience==="experienced"?"Very experienced":"Comfortable"],
+      ["Big decisions", A.authority==="options"?"Claude asks first":A.authority==="default"?"Claude picks, then tells me":"Claude decides"],
+      ["Tone", A.tone==="warm"?"Friendly":A.tone==="neutral"?"Professional":"Brief"],
+      ["Saving to main", A.deploy==="yes"?"Goes live automatically":A.deploy==="no"?"I publish separately":"Treated as live (to be safe)"],
+      ["Code changes", A.flow==="branch"?"Reviewed before merging":"Straight to main"],
+      ["Accident guards", (A.validate||A.confirmDestructive)?"On":"Off"],
+    ];
+    rows.forEach(([k,v])=>{ const r=document.createElement("div"); r.className="row";
+      const kk=document.createElement("span"); kk.className="k"; kk.textContent=k;
+      const vv=document.createElement("span"); vv.className="v"; vv.textContent=v; r.appendChild(kk); r.appendChild(vv); sum.appendChild(r); });
+    frag.appendChild(sum);
+
+    const target=A.path.trim()||"your project folder";
+    const ul=document.createElement("ul"); ul.className="writelist";
+    const items=[
+      [target+"/CLAUDE.md","your instructions for Claude Code"],
+      [target+"/AGENTS.md","the same instructions, for other AI coding tools"],
+    ];
+    if (A.memory){ items.push(["a private note about you","kept on your computer only — never shared, never committed"]); }
+    items.forEach(([path,desc])=>{ const li=document.createElement("li");
+      const tick=document.createElement("span"); tick.className="tick"; tick.textContent="→";
+      const c=document.createElement("code"); c.textContent=path; const d=document.createElement("span"); d.textContent=" — "+desc;
+      li.appendChild(tick); li.appendChild(c); li.appendChild(d); ul.appendChild(li); });
+    frag.appendChild(ul);
+
+    const np=document.createElement("div"); np.className="note-private";
+    np.innerHTML='<span>🔒</span><span>If a file with the same name is already there, the finished tool shows you the difference and asks before changing anything — it never overwrites your work silently.</span>';
+    frag.appendChild(np);
+    return frag;
+  }
+
+  function renderMini(){ const m=document.getElementById("stepsMini"); m.innerHTML="";
+    STEPS.forEach((_,i)=>{ const d=document.createElement("div"); d.className="dot"+(i<step?" done":"")+(i===step?" current":""); m.appendChild(d); }); }
+
+  document.getElementById("nextBtn").addEventListener("click",()=>{
+    if (step<STEPS.length-1){ step++; renderStep(); window.scrollTo({top:0,behavior:"smooth"}); } else copyDoc();
+  });
+  document.getElementById("backBtn").addEventListener("click",()=>{ if(step>0){ step--; renderStep(); } });
+
+  function docToText(){ return genContract().map(s=>s.lines.map(l=> l.c==="blank"?"":l.t).join("\n")).join("\n"); }
+  function copyDoc(){ navigator.clipboard.writeText(docToText()).then(()=>{ const b=document.getElementById("copyBtn"); b.textContent="Copied ✓"; b.classList.add("ok"); setTimeout(()=>{ b.textContent="Copy"; b.classList.remove("ok"); },1600); }).catch(()=>{}); }
+  document.getElementById("copyBtn").addEventListener("click",copyDoc);
+
+  const root=document.documentElement;
+  document.getElementById("themeBtn").addEventListener("click",()=>{ const cur=root.getAttribute("data-theme"); const isDark=cur?cur==="dark":matchMedia("(prefers-color-scheme: dark)").matches; root.setAttribute("data-theme", isDark?"light":"dark"); });
+
+  renderStep(); renderDoc();
+})();
+</script>

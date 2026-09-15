@@ -1,0 +1,43 @@
+# ── Secrets / credentials (NEVER commit — public repo) ──────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.*
+credentials.*
+service-account*.json
+
+# ── Private working notes (personal context stays OUT of a public repo) ──────
+# The rapport/context primer and internal planning live in the local Claude
+# memory dir (outside this tree). These patterns catch anything accidentally
+# dropped in-repo.
+*.local
+*.local.md
+/private/
+NOTES.local.md
+CONTEXT.local.md
+
+# ── Node / build artifacts (stack TBD — defensive) ──────────────────────────
+node_modules/
+dist/
+build/
+out/
+.next/
+.cache/
+coverage/
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── OS / editor cruft ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*~
