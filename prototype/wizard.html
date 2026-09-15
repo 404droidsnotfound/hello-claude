@@ -142,6 +142,11 @@
   .preview-bar .live .pulse { width:7px; height:7px; border-radius:50%; background:var(--doc-accent); animation:pulse 1.8s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
   .preview-bar .pv-spacer { flex:1; }
+  .pvtabs { display:flex; gap:2px; }
+  .pvtab { border:0; background:transparent; color:var(--doc-muted); font-family:"IBM Plex Mono",monospace; font-size:12px; padding:5px 9px; border-radius:7px; cursor:pointer; transition:.16s; }
+  .pvtab:hover { color:var(--doc-fg); }
+  .pvtab.cur { color:var(--doc-fg); background:var(--doc-panel); }
+  .pvtab .lock { color:var(--doc-brass); margin-left:5px; font-size:10px; }
   .copybtn { border:1px solid var(--doc-line); background:var(--doc-panel); color:var(--doc-muted); border-radius:8px; padding:6px 12px; font-family:"IBM Plex Mono",monospace; font-size:11.5px; cursor:pointer; transition:.16s; }
   .copybtn:hover { color:var(--doc-fg); border-color:var(--doc-strike); }
   .copybtn.ok { color:var(--doc-accent); border-color:var(--doc-accent); }
@@ -210,14 +215,14 @@
       </div>
     </section>
 
-    <section class="preview" aria-label="Live preview of your CLAUDE.md file">
+    <section class="preview" aria-label="Live preview of the files being created">
       <div class="preview-bar">
-        <span class="fname">CLAUDE.md</span>
+        <div class="pvtabs" id="pvTabs" role="tablist"></div>
         <span class="live"><span class="pulse"></span>live</span>
         <div class="pv-spacer"></div>
         <button class="copybtn" id="copyBtn">Copy</button>
       </div>
-      <div class="preview-cap">This is the <b>CLAUDE.md</b> file taking shape as you answer — a plain text file your AI coding tool reads automatically at the start of every session, so you don't have to repeat yourself.</div>
+      <div class="preview-cap" id="previewCap"></div>
       <div class="doc" id="doc"></div>
     </section>
   </main>
@@ -324,6 +329,7 @@
       fields:[
         { k:"memory", type:"toggle", q:"I keep notes that Claude should read and update", s:"Claude keeps them matching the real project, and treats the project's own files as the final word.", def:true },
         { k:"docvsmem", type:"toggle", q:"When a new idea comes up, ask me where to save it", s:"Instead of guessing whether it belongs in a permanent doc or a quick note.", def:true },
+        { k:"getToKnow", type:"toggle", showIf:"memory", q:"Let Claude ask me a few questions over the first sessions to learn how I work", s:"One question at a time, at natural pauses — never a questionnaire. It stops once it knows you.", def:true },
       ]},
 
     { id:"extras", eyebrow:"Finishing up", title:"A couple of finishing touches.",
@@ -335,7 +341,7 @@
       ]},
 
     { id:"seal", eyebrow:"All set", title:"Ready — here's what gets created.",
-      sub:"In this preview, use the Copy button on the right to grab your CLAUDE.md. The finished tool saves every file into your folder for you.",
+      sub:"In this preview, use the tabs and the Copy button on the right to grab each file. The finished tool saves every file into the right place for you.",
       review:true, fields:[] },
   ];
 
@@ -347,7 +353,7 @@
     sot:"docs", done:"confirm",
     repos:"single", deploy:"unsure", flow:"branch",
     validate:true, confirmDestructive:true,
-    memory:true, docvsmem:true,
+    memory:true, docvsmem:true, getToKnow:true,
     daterots:true, stack:"", path:"",
   };
   let step = 0;
@@ -442,6 +448,19 @@
 
     if (A.stack.trim()) sec("stack",[ L("h1","---"), blank(), L("h1","# Stack note"), L("b",A.stack.trim()) ]);
 
+    if (A.memory && A.getToKnow) sec("getknow",[
+      L("h2","## Get to know "+possessive()+" (until you do)"),
+      L("li","- The private primer has a \"Still learning\" section. While anything in it is blank, you are new"),
+      L("li","  here — so at natural pauses (a task just finished, a wait), ask ONE question that would fill a"),
+      L("li","  blank. Never a questionnaire; never before the work they came for."),
+      L("li","- Ask what a good colleague would want to know in the first week: how they like to be talked to,"),
+      L("li","  what humor lands, what wastes their time, the words and shorthand they use, when they're working,"),
+      L("li","  how they want to be told they're wrong. Pick the question from what's still blank — don't run a script."),
+      L("li","- Write what you learn into the primer the same session. Once nothing is blank, stop asking and"),
+      L("li","  just use it. If they say \"stop asking\", stop — and note that."),
+      L("li","- If there is no memory dir (another tool, a fresh machine), ask where to keep notes instead of asking nothing."),
+    ]);
+
     if (A.memory) sec("memfoot",[
       blank(),
       L("cmt","> The deeper context — who you are, how you work — lives in the local memory files"),
@@ -451,9 +470,107 @@
     return S;
   }
 
+  function toneLine(){
+    return A.tone==="warm" ? "Warm, direct, personable — a colleague, not a servant or a cheerleader."
+         : A.tone==="terse" ? "Brief. Short answers, no preamble." : "Clear, professional, straightforward.";
+  }
+  function decisionLine(){
+    return A.authority==="options" ? "Bring options + a recommendation, then STOP and wait for a yes."
+         : A.authority==="default" ? "Pick a sensible default and say what was picked." : "Use best judgment; surface only the hard-to-reverse.";
+  }
+
+  function genMemory(){
+    const S=[]; const sec=(id,lines)=>S.push({id,lines});
+    const L=(c,t)=>({c,t}); const blank=()=>({c:"blank",t:""});
+    const today=new Date().toISOString().slice(0,10);
+    const who=[ "**Owner: "+nameOwner()+"**" ];
+    if (A.role.trim()) who.push(A.role.trim());
+    if (A.domains.trim()) who.push("knows deeply: "+A.domains.trim()+" — engage those at peer level");
+    sec("head",[
+      L("cmt","<!-- PRIVATE local memory for this project. Auto-loaded every session."),
+      L("cmt","     Lives OUTSIDE the repo tree — never committed. -->"),
+      blank(),
+      L("h2","## CORE — read before acting"),
+      L("li","- "+who.join(" — ")+"."),
+      L("li","- **How we work:** "+toneLine()+" "+decisionLine()+" Full contract: this repo's CLAUDE.md."),
+    ]);
+    const pj=[];
+    if (A.projDesc.trim()) pj.push(L("li","- **This project:** "+A.projDesc.trim()));
+    pj.push(L("li","- **STATUS (updated "+today+"):** just set up with Hello Claude. Nothing started yet — update this line when that changes."));
+    sec("project",pj);
+    sec("index",[
+      blank(),
+      L("h2","## Index"),
+      L("li","- [Private context primer](PRIVATE-context-primer.md) — who "+possessive()+" is, how you work together"+(A.getToKnow?", and what you're still learning.":".")),
+    ]);
+    return S;
+  }
+
+  function genPrimer(){
+    const S=[]; const sec=(id,lines)=>S.push({id,lines});
+    const L=(c,t)=>({c,t}); const blank=()=>({c:"blank",t:""});
+    const today=new Date().toISOString().slice(0,10);
+    sec("head",[
+      L("h1","# ⛔ PRIVATE — do not commit"),
+      blank(),
+      L("b","This file lives in the project's local Claude memory dir, outside the repo. It re-associates a fresh"),
+      L("b","session with who "+possessive()+" is and how you work together. Everything here was either answered at"),
+      L("b","setup ("+today+") or learned in conversation — date what you add."),
+    ]);
+    const who=[blank(), L("h2","## Who "+possessive()+" is")];
+    if (A.role.trim()) who.push(L("li","- Role: "+A.role.trim()));
+    if (A.domains.trim()) who.push(L("li","- Knows deeply: "+A.domains.trim()+" — don't over-explain these."));
+    who.push(L("li","- Coding experience: "+(A.experience==="new"?"new to this — teach the why as you go.":A.experience==="experienced"?"very experienced — concise and technical.":"comfortable — explain the non-obvious, skip the basics.")));
+    sec("who",who);
+    const how=[blank(), L("h2","## How we work")];
+    how.push(L("li","- Tone: "+toneLine()));
+    how.push(L("li","- Decisions: "+decisionLine()));
+    how.push(L("li","- "+(A.brake==="yes"?"Be the brake — say so when something looks like a mistake, even unasked.":"Speak up about mistakes only when asked.")));
+    if (A.docvsmem) how.push(L("li","- On a sparked idea, ask \"doc or memory?\""));
+    sec("how",how);
+    if (A.getToKnow) sec("learning",[
+      blank(),
+      L("h2","## Still learning  (blank = ask; filled = use)"),
+      L("li","- Talks to me like:"),
+      L("li","- Humor:"),
+      L("li","- Wastes their time:"),
+      L("li","- Their words / shorthand:"),
+      L("li","- Hours & timezone:"),
+      L("li","- Wants correction delivered:"),
+    ]);
+    sec("left",[
+      blank(),
+      L("h2","## Where we left off"),
+      L("li","- "+today+": set up with Hello Claude. Nothing started yet."),
+    ]);
+    return S;
+  }
+
+  // The files taking shape. Which ones exist depends on the Notes toggle.
+  const DOCS={
+    contract:{ name:"CLAUDE.md", gen:genContract, priv:false,
+      cap:"This is the <b>CLAUDE.md</b> file taking shape as you answer — a plain text file your AI coding tool reads automatically at the start of every session, so you don't have to repeat yourself." },
+    memory:{ name:"MEMORY.md", gen:genMemory, priv:true,
+      cap:"<b>MEMORY.md</b> — a short private note Claude reads at the start of every session so it doesn't start from zero. Saved on your computer only, never in the shared project." },
+    primer:{ name:"PRIVATE-context-primer.md", gen:genPrimer, priv:true,
+      cap:"<b>The private primer</b> — who you are and how you work together. Claude fills in what it learns as you go. Private, never committed." },
+  };
+  let view="contract";
+  function visibleDocs(){ return A.memory ? ["contract","memory","primer"] : ["contract"]; }
+
+  function renderTabs(){
+    const t=document.getElementById("pvTabs"); t.innerHTML="";
+    visibleDocs().forEach(k=>{ const b=document.createElement("button"); b.className="pvtab"+(k===view?" cur":""); b.type="button"; b.setAttribute("role","tab"); b.setAttribute("aria-selected",k===view);
+      b.textContent=DOCS[k].name; if (DOCS[k].priv){ const l=document.createElement("span"); l.className="lock"; l.textContent="private"; b.appendChild(l); }
+      b.addEventListener("click",()=>{ view=k; renderDoc(); }); t.appendChild(b); });
+    document.getElementById("previewCap").innerHTML=DOCS[view].cap;
+  }
+
   const doc=document.getElementById("doc");
   function renderDoc(flashId){
-    const S=genContract(); doc.innerHTML="";
+    if (!visibleDocs().includes(view)) view="contract";
+    renderTabs();
+    const S=DOCS[view].gen(); doc.innerHTML="";
     S.forEach(section=>{
       const w=document.createElement("div"); w.className="doc-sec"; w.dataset.sec=section.id;
       section.lines.forEach(ln=>{ const el=document.createElement("div"); el.className= ln.c==="blank"?"blank":ln.c; if(ln.c!=="blank") el.textContent=ln.t; w.appendChild(el); });
@@ -462,7 +579,9 @@
     if (flashId){ const t=doc.querySelector('[data-sec="'+flashId+'"]'); if(t){ t.classList.add("flash"); setTimeout(()=>t.classList.remove("flash"),650); } }
   }
 
-  const FIELD_SEC={ name:"head",role:"head",domains:"head",projDesc:"project",langs:"project",experience:"project",brandkit:"project",authority:"decisions",signoff:"decisions",brake:"decisions",tone:"head",sot:"status",done:"status",docvsmem:"status",repos:"hygiene",deploy:"hygiene",flow:"hygiene",validate:"safety",confirmDestructive:"safety",memory:"memfoot",daterots:"daterots",stack:"stack" };
+  const FIELD_SEC={ name:"head",role:"who",domains:"who",projDesc:"project",langs:"project",experience:"project",brandkit:"project",authority:"decisions",signoff:"decisions",brake:"decisions",tone:"head",sot:"status",done:"status",docvsmem:"status",repos:"hygiene",deploy:"hygiene",flow:"hygiene",validate:"safety",confirmDestructive:"safety",memory:"memfoot",getToKnow:"getknow",daterots:"daterots",stack:"stack" };
+  // Which file a step mostly shapes — the preview switches there when the step opens.
+  const STEP_VIEW={ you:"primer" };
 
   const body=document.getElementById("stepBody");
   function renderStep(){
@@ -481,8 +600,9 @@
     body.innerHTML="";
     if (s.intro) body.appendChild(renderIntro());
     else if (s.review) body.appendChild(renderReview());
-    else s.fields.forEach(f=> body.appendChild(renderField(f)));
+    else s.fields.filter(f=> !f.showIf || A[f.showIf]).forEach(f=> body.appendChild(renderField(f)));
 
+    const want=STEP_VIEW[s.id]||"contract"; if (visibleDocs().includes(want) && view!==want){ view=want; renderDoc(); }
     renderMini();
     const fi=body.querySelector("input,textarea"); if(fi) setTimeout(()=>fi.focus(),40);
   }
@@ -562,7 +682,8 @@
       if (f.s){ const sp=document.createElement("span"); sp.textContent=f.s; info.appendChild(sp); }
       row.appendChild(info);
       const sw=document.createElement("button"); sw.className="sw"+(A[f.k]?" on":""); sw.type="button"; sw.setAttribute("aria-pressed",!!A[f.k]);
-      sw.addEventListener("click",()=>{ A[f.k]=!A[f.k]; sw.classList.toggle("on",A[f.k]); sw.setAttribute("aria-pressed",A[f.k]); renderDoc(FIELD_SEC[f.k]); });
+      sw.addEventListener("click",()=>{ A[f.k]=!A[f.k]; sw.classList.toggle("on",A[f.k]); sw.setAttribute("aria-pressed",A[f.k]); renderDoc(FIELD_SEC[f.k]);
+        if (STEPS[step].fields.some(g=>g.showIf===f.k)) renderStep(); });
       row.appendChild(sw); wrap.style.marginBottom="0"; wrap.appendChild(row);
     }
     return wrap;
@@ -579,6 +700,7 @@
       ["Saving to main", A.deploy==="yes"?"Goes live automatically":A.deploy==="no"?"I publish separately":"Treated as live (to be safe)"],
       ["Code changes", A.flow==="branch"?"Reviewed before merging":"Straight to main"],
       ["Accident guards", (A.validate||A.confirmDestructive)?"On":"Off"],
+      ["Getting to know you", A.memory&&A.getToKnow?"Over the first sessions":"Off"],
     ];
     rows.forEach(([k,v])=>{ const r=document.createElement("div"); r.className="row";
       const kk=document.createElement("span"); kk.className="k"; kk.textContent=k;
@@ -591,7 +713,10 @@
       [target+"/CLAUDE.md","your instructions for Claude Code"],
       [target+"/AGENTS.md","the same instructions, for other AI coding tools"],
     ];
-    if (A.memory){ items.push(["a private note about you","kept on your computer only — never shared, never committed"]); }
+    if (A.memory){
+      items.push(["<memory dir>/MEMORY.md","a short private note Claude reads every session — on your computer only"]);
+      items.push(["<memory dir>/PRIVATE-context-primer.md","who you are and how you work together — private, never committed"]);
+    }
     items.forEach(([path,desc])=>{ const li=document.createElement("li");
       const tick=document.createElement("span"); tick.className="tick"; tick.textContent="→";
       const c=document.createElement("code"); c.textContent=path; const d=document.createElement("span"); d.textContent=" — "+desc;
@@ -612,7 +737,7 @@
   });
   document.getElementById("backBtn").addEventListener("click",()=>{ if(step>0){ step--; renderStep(); } });
 
-  function docToText(){ return genContract().map(s=>s.lines.map(l=> l.c==="blank"?"":l.t).join("\n")).join("\n"); }
+  function docToText(){ return DOCS[view].gen().map(s=>s.lines.map(l=> l.c==="blank"?"":l.t).join("\n")).join("\n"); }
   function copyDoc(){ navigator.clipboard.writeText(docToText()).then(()=>{ const b=document.getElementById("copyBtn"); b.textContent="Copied ✓"; b.classList.add("ok"); setTimeout(()=>{ b.textContent="Copy"; b.classList.remove("ok"); },1600); }).catch(()=>{}); }
   document.getElementById("copyBtn").addEventListener("click",copyDoc);
 
