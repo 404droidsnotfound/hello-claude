@@ -1,0 +1,32 @@
+{
+  "name": "hello-claude",
+  "version": "0.1.0",
+  "description": "Interview yourself once; start every Claude Code project already knowing how you work.",
+  "type": "module",
+  "bin": {
+    "hello-claude": "bin/hello-claude.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "web"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node bin/hello-claude.js",
+    "test": "node --test test/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hakalachi/hello-claude.git"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "onboarding"
+  ]
+}

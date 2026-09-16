@@ -122,7 +122,10 @@ Design points, in order of importance:
   private primer was promised on two steps and generated on none. Spec'd above; prototype being
   extended to generate `MEMORY.md` + primer and carry the get-to-know rule; the "new or unusual?"
   question dropped; role/expertise hidden when notes are off. **Runner scoped and approved** (section
-  above); not started.
+  above).
+- **2026-09-16** — runner step 1 done: `npx hello-claude` serves the wizard from `web/` on a
+  token-gated localhost port and opens the browser. `prototype/` is gone; `web/index.html` is the
+  app. Nothing writes yet.
 
 ## The runner (scoped and approved 2026-09-15)
 
