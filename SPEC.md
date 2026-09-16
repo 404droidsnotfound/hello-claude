@@ -120,6 +120,20 @@ Design points, in order of importance:
   private primer was promised on two steps and generated on none. Spec'd above; prototype being
   extended to generate `MEMORY.md` + primer and carry the get-to-know rule. Runner not started.
 
+## Later (ideas captured, not scoped)
+
+Nothing here is committed. Each line is dated so a reader knows how old the idea is; none of them
+are being built until the form-core runner and README exist.
+
+- **Import an existing contract.** Point the tool at a `CLAUDE.md` / `AGENTS.md` you already have
+  and carry it into a new project — pre-filling the interview from it, or copying it through and
+  asking only what's project-specific. Would make the tool the way you *propagate* a contract you
+  have refined, not just the way you write a first one. *(2026-09-15)*
+- **"Interview me" mode.** Claude conducts the interview conversationally, using the user's own API
+  key. Locked as a later phase, not an idea — listed here so the list is complete. *(2026-09-03)*
+- **Multi-repo compose.** One contract core, several repos. Locked as a future "advanced" mode.
+  *(2026-09-03)*
+
 ## Named dependencies
 
 - **The memory-dir path** is computed from Claude Code's internal
