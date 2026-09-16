@@ -120,7 +120,70 @@ Design points, in order of importance:
   button, "This project" step.
 - **2026-09-15** — prototype walkthrough completed by the owner; judged solid. Gap found: the
   private primer was promised on two steps and generated on none. Spec'd above; prototype being
-  extended to generate `MEMORY.md` + primer and carry the get-to-know rule. Runner not started.
+  extended to generate `MEMORY.md` + primer and carry the get-to-know rule; the "new or unusual?"
+  question dropped; role/expertise hidden when notes are off. **Runner scoped and approved** (section
+  above); not started.
+
+## The runner (scoped and approved 2026-09-15)
+
+```
+npx hello-claude
+   |
+   +- starts a tiny HTTP server on 127.0.0.1:<random port>
+   +- opens the browser at http://127.0.0.1:<port>/?t=<one-time token>
+   |
+   |   browser (the wizard)
+   |     +- GET  /                -> the wizard page
+   |     +- POST /check  {path}   -> folder exists? git repo? where memory would go
+   |     +- POST /write  {answers, per-file decisions}
+   |              -> generates all four files, never-clobber, atomic write, reports what landed
+   |
+   +- results screen: what was written where, "open the project in Claude Code"; server exits
+```
+
+**Decisions:**
+
+1. **Zero dependencies, plain Node** (`node:http`, `node:fs`, `node:test`). No framework, no
+   bundler, no build step; the wizard is one HTML file. Every dependency is startup time and audit
+   surface for a tool whose value is "npx and it runs." Node 20+.
+2. **JavaScript with `// @ts-check` and JSDoc**, not TypeScript. Editor-time type checking with
+   nothing to compile.
+3. **Generation lives in one shared ESM module**, `src/generate.js`, imported by the server and
+   loaded by the wizard page as a module. One source of truth, unit-testable without a browser, and
+   the live preview stays live. The prototype's `genContract` / `genMemory` / `genPrimer` become
+   this module.
+4. **Path entry: typed, with live validation.** `/check` confirms the folder exists, whether it is
+   a git repo, and which memory dir would be used. A native folder picker has no dependency-free,
+   cross-platform answer from Node; it is a *Later* item, not a v1 one.
+5. **Memory-dir fallback:** when `~/.claude/projects` is not found, the results screen shows the
+   two private files with the path that would have been used and a Copy button, and writes nothing
+   private. Never into the repo — "private" and "in the repo" are the two things this design keeps
+   apart, and a `.gitignore` line is not a wall.
+6. **`prototype/` becomes `web/`.** The prototype is the app; a kept copy is a stale second
+   rendering.
+
+**Non-negotiables:**
+
+- Binds `127.0.0.1` only. A one-time token, generated at start and carried in the URL, is required
+  on every POST — without it any page open in the user's browser could write to their disk through
+  localhost.
+- Writes only under the chosen project dir and the computed memory dir. Every write is
+  `<file>.tmp` → `fsync` → rename.
+- An existing file is never touched until the user has seen the diff and chosen, per file,
+  overwrite or keep.
+- `AGENTS.md` is byte-identical to `CLAUDE.md`.
+
+**Build order** (each step runnable end to end, each its own commit):
+
+1. `package.json` + `bin/hello-claude.js` + server serving the wizard and opening the browser.
+   Nothing writes yet.
+2. Generation moved into `src/generate.js` with tests; the wizard imports it.
+3. `/check`: path validation, memory-dir encoding, tests.
+4. `/write`: never-clobber diff, atomic write, token check, results screen.
+5. `README.md` as-built: install, run, what it writes where, how it works.
+
+Layout: `bin/`, `src/` (`server.js`, `generate.js`, `paths.js`, `write.js`), `web/index.html`,
+`test/`. `package.json` carries `bin`, `files`, `engines`, `"type": "module"`.
 
 ## Later (ideas captured, not scoped)
 
@@ -133,6 +196,8 @@ are being built until the form-core runner and README exist.
   have refined, not just the way you write a first one. *(2026-09-15)*
 - **"Interview me" mode.** Claude conducts the interview conversationally, using the user's own API
   key. Locked as a later phase, not an idea — listed here so the list is complete. *(2026-09-03)*
+- **Native folder picker** for the path field, per OS (PowerShell dialog / `osascript` / `zenity`),
+  falling back to the typed path. *(2026-09-15)*
 - **Multi-repo compose.** One contract core, several repos. Locked as a future "advanced" mode.
   *(2026-09-03)*
 
