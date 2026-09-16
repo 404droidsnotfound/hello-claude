@@ -128,6 +128,10 @@ Design points, in order of importance:
   app. Nothing writes yet.
 - **2026-09-16** — runner step 2 done: generation lives in `src/generate.js`, imported by the page
   for the preview and by Node for tests (`npm test`, 7 cases). The page no longer contains a generator.
+- **2026-09-16** — runner step 3 done: `POST /check` (in `src/paths.js`) validates the typed path
+  live — exists, git repo, which files are already there, and the memory dir Claude Code would use
+  (encoding confirmed against real `~/.claude/projects` entries). The review step shows resolved
+  paths. 12 tests.
 
 ## The runner (scoped and approved 2026-09-15)
 
@@ -184,7 +188,8 @@ npx hello-claude
    Nothing writes yet.
 2. Generation moved into `src/generate.js` with tests; the wizard imports it.
 3. `/check`: path validation, memory-dir encoding, tests.
-4. `/write`: never-clobber diff, atomic write, token check, results screen.
+4. `/write`: never-clobber diff, atomic write, token check, results screen. Also the memory-dir
+   **override** field (the path is a guess; SPEC says overridable) — deferred here from step 3.
 5. `README.md` as-built: install, run, what it writes where, how it works.
 
 Layout: `bin/`, `src/` (`server.js`, `generate.js`, `paths.js`, `write.js`), `web/index.html`,

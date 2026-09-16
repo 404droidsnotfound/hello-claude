@@ -94,6 +94,12 @@
   .browsebtn:hover { border-color:var(--accent); color:var(--accent); }
   .browse-note { color:var(--faint); font-size:12px; margin-top:8px; display:none; }
   .browse-note.show { display:block; }
+  .pathcheck { font-size:12.5px; margin-top:8px; line-height:1.5; color:var(--faint); display:none; }
+  .pathcheck.show { display:block; }
+  .pathcheck.ok { color:var(--muted); }
+  .pathcheck.warn { color:var(--accent-2); }
+  .pathcheck code { font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink); word-break:break-all; }
+  .pathcheck .sub { display:block; margin-top:3px; }
 
   .opts { display:flex; flex-direction:column; gap:9px; }
   .opts.row { flex-direction:row; flex-wrap:wrap; }
@@ -360,6 +366,38 @@
       cap:"<b>The private primer</b> — who you are and how you work together. Claude fills in what it learns as you go. Private, never committed." },
   };
   let view="contract";
+
+  // What the server knows about the target folder. Refreshed as the path is typed; consulted
+  // by the review step. null until a path has been checked.
+  let check=null;
+  let checkTimer=0, checkSeq=0;
+  function scheduleCheck(pathText, onResult){
+    clearTimeout(checkTimer);
+    const seq=++checkSeq;
+    checkTimer=setTimeout(async()=>{
+      try{
+        const r=await fetch("/check"+location.search,{ method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({path:pathText}) });
+        const data=await r.json();
+        if (seq!==checkSeq) return;           // a newer keystroke superseded this one
+        check=data; onResult(data);
+      }catch{ if (seq===checkSeq){ check=null; onResult(null); } }
+    }, 250);
+  }
+  function describeCheck(c){
+    if (!c) return { cls:"", html:"" };
+    if (c.reason==="empty") return { cls:"", html:"" };
+    if (c.reason==="missing") return { cls:"warn", html:"That folder doesn't exist yet — check the path. <code>"+esc(c.resolved)+"</code>" };
+    const have=Object.entries(c.existing).filter(([,v])=>v).map(([k])=>k);
+    let html="Found <code>"+esc(c.resolved)+"</code>"+(c.isGitRepo?" · a git repo":" · not a git repo yet, which is fine");
+    if (have.length) html+="<span class=sub>Already there: "+have.map(esc).join(", ")+" — you'll see the difference and choose before anything is changed.</span>";
+    if (A.memory){
+      html+= c.memory.available
+        ? "<span class=sub>Private notes will go to <code>"+esc(c.memory.dir)+"</code> — Claude Code's own memory folder for this project (a best guess at its layout).</span>"
+        : "<span class=sub>Claude Code's memory folder wasn't found on this computer, so the private files will be shown to you to place by hand instead of written.</span>";
+    }
+    return { cls:"ok", html };
+  }
+  function esc(t){ return String(t).replace(/[&<>"]/g, ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch])); }
   function visibleDocs(){ return A.memory ? ["contract","memory","primer"] : ["contract"]; }
 
   function renderTabs(){
@@ -443,7 +481,10 @@
       if (f.type==="path"){
         const row=document.createElement("div"); row.className="pathrow";
         const el=document.createElement("input"); el.type="text"; el.value=A[f.k]||""; el.placeholder=f.ph||"";
-        el.addEventListener("input",()=>{ A[f.k]=el.value; renderDoc(); });
+        const status=document.createElement("div"); status.className="pathcheck";
+        const show=(c)=>{ const d=describeCheck(c); status.className="pathcheck "+d.cls+(d.html?" show":""); status.innerHTML=d.html; };
+        el.addEventListener("input",()=>{ A[f.k]=el.value; renderDoc(); scheduleCheck(el.value, show); });
+        if (el.value) scheduleCheck(el.value, show);
         const br=document.createElement("button"); br.className="browsebtn"; br.type="button";
         br.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Browse…';
         const note=document.createElement("div"); note.className="browse-note";
@@ -455,7 +496,7 @@
               note.textContent="Your browser won't open a folder picker inside this preview. In the installed tool, Browse opens your system's native folder chooser — for now, just type the path."; note.classList.add("show"); }
           } else { note.textContent="Folder picking opens natively in the installed tool. For this preview, type the path above."; note.classList.add("show"); }
         });
-        row.appendChild(el); row.appendChild(br); wrap.appendChild(row); wrap.appendChild(note);
+        row.appendChild(el); row.appendChild(br); wrap.appendChild(row); wrap.appendChild(status); wrap.appendChild(note);
       } else {
         const el=document.createElement(f.type==="textarea"?"textarea":"input");
         if (f.type==="text") el.type="text";
@@ -512,15 +553,19 @@
       const vv=document.createElement("span"); vv.className="v"; vv.textContent=v; r.appendChild(kk); r.appendChild(vv); sum.appendChild(r); });
     frag.appendChild(sum);
 
-    const target=A.path.trim()||"your project folder";
+    const good=check&&check.ok;
+    const target=good? check.resolved : (A.path.trim()||"your project folder");
+    const sep=target.includes("\\")?"\\":"/";
+    const memDir=good&&check.memory.available? check.memory.dir : null;
     const ul=document.createElement("ul"); ul.className="writelist";
     const items=[
-      [target+"/CLAUDE.md","your instructions for Claude Code"],
-      [target+"/AGENTS.md","the same instructions, for other AI coding tools"],
+      [target+sep+"CLAUDE.md","your instructions for Claude Code"],
+      [target+sep+"AGENTS.md","the same instructions, for other AI coding tools"],
     ];
     if (A.memory){
-      items.push(["<memory dir>/MEMORY.md","a short private note Claude reads every session — on your computer only"]);
-      items.push(["<memory dir>/PRIVATE-context-primer.md","who you are and how you work together — private, never committed"]);
+      const where=memDir? memDir+sep : "(shown on screen to place by hand) ";
+      items.push([where+"MEMORY.md","a short private note Claude reads every session — on your computer only"]);
+      items.push([where+"PRIVATE-context-primer.md","who you are and how you work together — private, never committed"]);
     }
     items.forEach(([path,desc])=>{ const li=document.createElement("li");
       const tick=document.createElement("span"); tick.className="tick"; tick.textContent="→";

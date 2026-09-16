@@ -12,6 +12,7 @@ import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { checkTarget } from "./paths.js";
 
 const WEB_DIR = fileURLToPath(new URL("../web/", import.meta.url));
 const SRC_DIR = fileURLToPath(new URL("./", import.meta.url));
@@ -22,6 +23,33 @@ const STATIC = {
   "/":            { file: path.join(WEB_DIR, "index.html"),  type: "text/html; charset=utf-8" },
   "/generate.js": { file: path.join(SRC_DIR, "generate.js"), type: "text/javascript; charset=utf-8" },
 };
+
+const MAX_BODY = 256 * 1024;
+
+/**
+ * Parse a small JSON body. Anything oversized or malformed is treated as an empty object —
+ * every handler validates its own fields anyway.
+ * @param {import("node:http").IncomingMessage} req
+ * @returns {Promise<any>}
+ */
+function readJson(req) {
+  return new Promise((resolve) => {
+    let raw = ""; let over = false;
+    req.on("data", (chunk) => { raw += chunk; if (raw.length > MAX_BODY) { over = true; req.destroy(); } });
+    req.on("end", () => { if (over) return resolve({}); try { resolve(JSON.parse(raw || "{}")); } catch { resolve({}); } });
+    req.on("error", () => resolve({}));
+  });
+}
+
+/**
+ * @param {import("node:http").ServerResponse} res
+ * @param {number} status
+ * @param {unknown} data
+ */
+function json(res, status, data) {
+  res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+  res.end(JSON.stringify(data));
+}
 
 /**
  * Start the server on a free port.
@@ -46,6 +74,12 @@ export function start(opts = {}) {
     if (asset) {
       res.writeHead(200, { "content-type": asset.type, "cache-control": "no-store" });
       res.end(await readFile(asset.file, "utf8"));
+      return;
+    }
+
+    if (req.method === "POST" && reqUrl.pathname === "/check") {
+      const body = await readJson(req);
+      json(res, 200, await checkTarget(typeof body?.path === "string" ? body.path : ""));
       return;
     }
 
