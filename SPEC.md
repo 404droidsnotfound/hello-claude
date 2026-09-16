@@ -36,7 +36,9 @@ read the primer. The primer is where rapport accumulates. Rules go in the contra
 in the primer; nothing personal crosses into the committed files.
 
 The memory files are only written when the user keeps notes (the "Notes" toggle). When they don't,
-the interview's personal answers have no private home — see Open questions.
+the interview asks nothing personal beyond a name: the role and expertise fields are hidden, because
+there would be no private place to put the answers and the contract must not become one
+(decided 2026-09-15).
 
 ## The content is earned (2026-09-15)
 
@@ -144,10 +146,6 @@ are being built until the form-core runner and README exist.
 
 ## Open questions
 
-- **Notes off, personal answers given.** The "About you" step promises a private note; with notes
-  off there is none. Options: drop the answers silently (current), fold a one-line "working with"
-  into the contract (breaks the privacy promise), or hide the role/expertise fields when notes are
-  off. Not decided.
 - **Where `AGENTS.md`-only tools keep memory.** The rule's last bullet covers it at runtime; the
   runner's fallback covers it at write time. Whether that is enough is untested.
 

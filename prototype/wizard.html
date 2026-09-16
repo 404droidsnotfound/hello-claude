@@ -238,11 +238,13 @@
     { id:"intro", eyebrow:"Welcome", title:"Let's set up how Claude works with you.", intro:true },
 
     { id:"you", eyebrow:"About you", title:"Who is Claude helping?",
-      sub:"Claude does better when it knows a little about you. Your answers here set the tone it writes in and go into a private note saved only on your computer — never uploaded, and never added to the shared project files.",
+      sub:()=> A.memory
+        ? "Claude does better when it knows a little about you. Your answers here set the tone it writes in and go into a private note saved only on your computer — never uploaded, and never added to the shared project files."
+        : "Just a name for now. With notes turned off (step 8) there is no private place to keep anything more about you, so Claude won't ask.",
       fields:[
         { k:"name", type:"text", q:"What should Claude call you?", ph:"e.g. Gene" },
-        { k:"role", type:"text", q:"What do you do?", hint:"Optional. Helps Claude pitch explanations at the right level.", ph:"e.g. Founder · solo developer · student" },
-        { k:"domains", type:"textarea", q:"Is there anything you know deeply?", hint:"Optional. If you're already an expert in something — design, databases, security — say so, and Claude won't over-explain it to you.", ph:"e.g. Design; disaster recovery; live-streaming" },
+        { k:"role", type:"text", showIf:"memory", q:"What do you do?", hint:"Optional. Helps Claude pitch explanations at the right level.", ph:"e.g. Founder · solo developer · student" },
+        { k:"domains", type:"textarea", showIf:"memory", q:"Is there anything you know deeply?", hint:"Optional. If you're already an expert in something — design, databases, security — say so, and Claude won't over-explain it to you.", ph:"e.g. Design; disaster recovery; live-streaming" },
       ]},
 
     { id:"project", eyebrow:"This project", title:"What are you working on?",
@@ -585,8 +587,9 @@
     const s=STEPS[step];
     document.getElementById("eyebrow").textContent=s.eyebrow;
     document.getElementById("stepTitle").textContent=s.title;
-    document.getElementById("stepSub").textContent=s.sub||"";
-    document.getElementById("stepSub").style.display = s.sub? "block":"none";
+    const sub=typeof s.sub==="function"? s.sub() : s.sub;
+    document.getElementById("stepSub").textContent=sub||"";
+    document.getElementById("stepSub").style.display = sub? "block":"none";
     document.getElementById("stepNo").textContent="Step "+step+" of "+(STEPS.length-1);
     document.getElementById("stepNo").style.visibility = s.intro? "hidden":"visible";
     document.getElementById("backBtn").disabled = step===0;
