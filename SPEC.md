@@ -126,6 +126,8 @@ Design points, in order of importance:
 - **2026-09-16** — runner step 1 done: `npx hello-claude` serves the wizard from `web/` on a
   token-gated localhost port and opens the browser. `prototype/` is gone; `web/index.html` is the
   app. Nothing writes yet.
+- **2026-09-16** — runner step 2 done: generation lives in `src/generate.js`, imported by the page
+  for the preview and by Node for tests (`npm test`, 7 cases). The page no longer contains a generator.
 
 ## The runner (scoped and approved 2026-09-15)
 

@@ -14,7 +14,14 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const WEB_DIR = fileURLToPath(new URL("../web/", import.meta.url));
+const SRC_DIR = fileURLToPath(new URL("./", import.meta.url));
 const HOST = "127.0.0.1";
+
+// The only things this server will ever hand out. Anything else is a 404, token or not.
+const STATIC = {
+  "/":            { file: path.join(WEB_DIR, "index.html"),  type: "text/html; charset=utf-8" },
+  "/generate.js": { file: path.join(SRC_DIR, "generate.js"), type: "text/javascript; charset=utf-8" },
+};
 
 /**
  * Start the server on a free port.
@@ -35,10 +42,10 @@ export function start(opts = {}) {
       return;
     }
 
-    if (req.method === "GET" && reqUrl.pathname === "/") {
-      const html = await readFile(path.join(WEB_DIR, "index.html"), "utf8");
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
-      res.end(html);
+    const asset = req.method === "GET" ? STATIC[/** @type {keyof STATIC} */ (reqUrl.pathname)] : undefined;
+    if (asset) {
+      res.writeHead(200, { "content-type": asset.type, "cache-control": "no-store" });
+      res.end(await readFile(asset.file, "utf8"));
       return;
     }
 

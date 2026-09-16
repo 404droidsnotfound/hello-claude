@@ -16,7 +16,7 @@
   },
   "scripts": {
     "start": "node bin/hello-claude.js",
-    "test": "node --test test/"
+    "test": "node --test"
   },
   "repository": {
     "type": "git",
