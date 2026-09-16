@@ -336,7 +336,6 @@
       sub:"Optional extras, and then where to save your files.",
       fields:[
         { k:"daterots", type:"toggle", q:"Remind Claude to date notes that can go out of date", s:"So a note written today isn't mistaken for still-true a year from now.", def:true },
-        { k:"stack", type:"textarea", q:"Does your project use anything new or unusual?", hint:"Optional. Claude learned from information up to a certain date, so it can be behind on brand-new tools or recent versions. If part of your project changed recently or works differently than expected, tell it here — Claude will read this before assuming.", ph:"e.g. We use version 3 of the framework, which changed how pages are built — check the local docs before writing code." },
         { k:"path", type:"path", q:"Where should the files be saved?", hint:"Choose the main folder of the project you want to set up.", ph:"e.g. C:\\Users\\you\\my-project" },
       ]},
 
@@ -354,7 +353,7 @@
     repos:"single", deploy:"unsure", flow:"branch",
     validate:true, confirmDestructive:true,
     memory:true, docvsmem:true, getToKnow:true,
-    daterots:true, stack:"", path:"",
+    daterots:true, path:"",
   };
   let step = 0;
 
@@ -445,8 +444,6 @@
       L("h2","## When in doubt, ASK."),
       L("b","A pause to confirm is never the wrong move; running ahead is."),
     ]);
-
-    if (A.stack.trim()) sec("stack",[ L("h1","---"), blank(), L("h1","# Stack note"), L("b",A.stack.trim()) ]);
 
     if (A.memory && A.getToKnow) sec("getknow",[
       L("h2","## Get to know "+possessive()+" (until you do)"),
@@ -579,7 +576,7 @@
     if (flashId){ const t=doc.querySelector('[data-sec="'+flashId+'"]'); if(t){ t.classList.add("flash"); setTimeout(()=>t.classList.remove("flash"),650); } }
   }
 
-  const FIELD_SEC={ name:"head",role:"who",domains:"who",projDesc:"project",langs:"project",experience:"project",brandkit:"project",authority:"decisions",signoff:"decisions",brake:"decisions",tone:"head",sot:"status",done:"status",docvsmem:"status",repos:"hygiene",deploy:"hygiene",flow:"hygiene",validate:"safety",confirmDestructive:"safety",memory:"memfoot",getToKnow:"getknow",daterots:"daterots",stack:"stack" };
+  const FIELD_SEC={ name:"head",role:"who",domains:"who",projDesc:"project",langs:"project",experience:"project",brandkit:"project",authority:"decisions",signoff:"decisions",brake:"decisions",tone:"head",sot:"status",done:"status",docvsmem:"status",repos:"hygiene",deploy:"hygiene",flow:"hygiene",validate:"safety",confirmDestructive:"safety",memory:"memfoot",getToKnow:"getknow",daterots:"daterots" };
   // Which file a step mostly shapes — the preview switches there when the step opens.
   const STEP_VIEW={ you:"primer" };
 
