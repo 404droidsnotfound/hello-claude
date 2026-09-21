@@ -132,6 +132,13 @@ Design points, in order of importance:
   live — exists, git repo, which files are already there, and the memory dir Claude Code would use
   (encoding confirmed against real `~/.claude/projects` entries). The review step shows resolved
   paths. 12 tests.
+- **2026-09-21** — runner step 4 done: the button writes. `POST /plan` shows every path and a diff
+  for anything already there (Keep mine / Replace, per file, Keep by default); `POST /write` re-plans
+  on the server, writes `tmp → fsync → rename` inside a path jail, and `AGENTS.md` is byte-identical
+  to `CLAUDE.md`. Memory-dir override field on the Finishing-up step. No memory root → the private
+  pair is shown with a Copy button, not written. Results screen; Finish stops the server. 23 tests,
+  plus a browser run against a scratch project with a pre-existing `CLAUDE.md`. **Runner is usable
+  end to end.** Remaining: step 5, the README.
 
 ## The runner (scoped and approved 2026-09-15)
 

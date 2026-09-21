@@ -182,6 +182,43 @@
   .writelist .tick { color:var(--accent); flex:none; margin-top:1px; }
   .note-private { color:var(--faint); font-size:12px; margin-top:14px; display:flex; gap:8px; align-items:flex-start; line-height:1.45; }
 
+  /* seal step: existing files, diffs, decisions */
+  .existing { margin-top:20px; }
+  .existing h3 { font-size:15px; margin-bottom:4px; }
+  .existing .lead { color:var(--muted); font-size:13px; margin:0 0 12px; line-height:1.5; }
+  .exfile { border:1px solid var(--line); border-radius:12px; background:var(--surface); margin-bottom:12px; overflow:hidden; }
+  .exfile .exhead { display:flex; align-items:center; gap:12px; padding:10px 14px; flex-wrap:wrap; }
+  .exfile .exhead code { font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--ink); }
+  .exfile .exhead .same { color:var(--accent); font-size:12.5px; }
+  .exfile .decide { margin-left:auto; display:flex; gap:4px; }
+  .decide label { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; padding:5px 10px; border:1px solid var(--line-strong); border-radius:8px; cursor:pointer; color:var(--muted); }
+  .decide label:has(input:checked) { border-color:var(--accent); color:var(--ink); background:var(--accent-soft); }
+  .decide label.over:has(input:checked) { border-color:var(--accent-2); }
+  .decide input { margin:0; accent-color:var(--accent); }
+  .diff { max-height:220px; overflow:auto; background:var(--doc-bg); color:var(--doc-fg); font-family:"IBM Plex Mono",monospace; font-size:11.5px; line-height:1.5; padding:8px 0; border-top:1px solid var(--line); }
+  .diff div { padding:0 14px; white-space:pre-wrap; word-break:break-word; }
+  .diff .add { background:rgba(95,199,166,.12); color:var(--doc-accent); }
+  .diff .del { background:rgba(224,178,92,.12); color:var(--doc-brass); text-decoration:line-through; text-decoration-color:var(--doc-strike); }
+  .diff .ctx { color:var(--doc-muted); }
+  .planwarn { color:var(--accent-2); font-size:13px; margin-top:16px; }
+
+  /* results */
+  .results { list-style:none; padding:0; margin:6px 0 0; display:flex; flex-direction:column; gap:10px; }
+  .results li { display:flex; gap:10px; align-items:flex-start; font-size:13px; line-height:1.45; color:var(--muted); }
+  .results .badge { flex:none; font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; padding:2px 7px; border-radius:6px; margin-top:1px; }
+  .results .badge.written { background:var(--accent-soft); color:var(--accent-ink); }
+  .results .badge.kept, .results .badge.unchanged { background:var(--line); color:var(--muted); }
+  .results .badge.shown { background:rgba(183,121,31,.15); color:var(--accent-2); }
+  .results code { font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink); word-break:break-all; }
+  .shownfile { margin-top:14px; }
+  .shownfile .sh { display:flex; align-items:center; gap:10px; margin-bottom:6px; font-size:13px; }
+  .shownfile .sh code { font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink); }
+  .shownfile textarea { width:100%; min-height:150px; font-family:"IBM Plex Mono",monospace; font-size:11.5px; background:var(--doc-bg); color:var(--doc-fg); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .minibtn { font:inherit; font-size:12px; padding:4px 10px; border:1px solid var(--line-strong); border-radius:7px; background:var(--raised); color:var(--muted); cursor:pointer; }
+  .minibtn:hover { color:var(--ink); }
+  .done-note { margin-top:22px; padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:var(--surface); font-size:13.5px; line-height:1.55; }
+  .done-note b { font-weight:600; }
+
   .foot { padding:9px 22px; border-top:1px solid var(--line); background:var(--surface); color:var(--faint); font-size:11.5px; display:flex; gap:8px; align-items:center; }
 
   @media (prefers-reduced-motion: reduce){ *{ animation:none!important; transition:none!important; } }
@@ -240,6 +277,7 @@
   // Generation lives in generate.js (shared with the server). The session token rides on
   // every URL, the module's included — see src/server.js.
   const G = await import("./generate.js" + location.search);
+  const D = await import("./diff.js" + location.search);
 
   const STEPS = [
     { id:"intro", eyebrow:"Welcome", title:"Let's set up how Claude works with you.", intro:true },
@@ -346,10 +384,11 @@
       fields:[
         { k:"daterots", type:"toggle", q:"Remind Claude to date notes that can go out of date", s:"So a note written today isn't mistaken for still-true a year from now.", def:true },
         { k:"path", type:"path", q:"Where should the files be saved?", hint:"Choose the main folder of the project you want to set up.", ph:"e.g. C:\\Users\\you\\my-project" },
+        { k:"memdir", type:"memdir", showIf:"memory", q:"Where should the private notes go?", hint:"Normally you leave this blank: Claude Code keeps a memory folder for each project, and Hello Claude works out which one. Fill it in only if you want them somewhere else." },
       ]},
 
     { id:"seal", eyebrow:"All set", title:"Ready — here's what gets created.",
-      sub:"In this preview, use the tabs and the Copy button on the right to grab each file. The finished tool saves every file into the right place for you.",
+      sub:"One last look before anything is written. If a file is already there, you'll see exactly what would change — and it stays as it is unless you say otherwise.",
       review:true, fields:[] },
   ];
 
@@ -370,13 +409,16 @@
   // What the server knows about the target folder. Refreshed as the path is typed; consulted
   // by the review step. null until a path has been checked.
   let check=null;
+  let memDirOverride="";           // "" = use Claude Code's folder
+  let plan=null;                   // from /plan, refreshed when the seal step opens
+  let decisions={};                // { "CLAUDE.md": "overwrite" | "keep" } for files already there
   let checkTimer=0, checkSeq=0;
   function scheduleCheck(pathText, onResult){
     clearTimeout(checkTimer);
     const seq=++checkSeq;
     checkTimer=setTimeout(async()=>{
       try{
-        const r=await fetch("/check"+location.search,{ method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({path:pathText}) });
+        const r=await fetch("/check"+location.search,{ method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({path:pathText, memoryDir:memDirOverride}) });
         const data=await r.json();
         if (seq!==checkSeq) return;           // a newer keystroke superseded this one
         check=data; onResult(data);
@@ -391,9 +433,11 @@
     let html="Found <code>"+esc(c.resolved)+"</code>"+(c.isGitRepo?" · a git repo":" · not a git repo yet, which is fine");
     if (have.length) html+="<span class=sub>Already there: "+have.map(esc).join(", ")+" — you'll see the difference and choose before anything is changed.</span>";
     if (A.memory){
-      html+= c.memory.available
+      html+= c.memory.convention==="override"
+        ? "<span class=sub>Private notes will go to <code>"+esc(c.memory.dir)+"</code> — your choice.</span>"
+        : c.memory.available
         ? "<span class=sub>Private notes will go to <code>"+esc(c.memory.dir)+"</code> — Claude Code's own memory folder for this project (a best guess at its layout).</span>"
-        : "<span class=sub>Claude Code's memory folder wasn't found on this computer, so the private files will be shown to you to place by hand instead of written.</span>";
+        : "<span class=sub>Claude Code's memory folder wasn't found on this computer, so the private files will be shown to you to place by hand instead of written — or give a folder below.</span>";
     }
     return { cls:"ok", html };
   }
@@ -438,7 +482,8 @@
     document.getElementById("backBtn").disabled = step===0;
     const next=document.getElementById("nextBtn");
     next.className="btn "+(s.review?"seal":"primary");
-    next.textContent = s.intro? "Let's go" : s.review? "Copy & finish" : s.id==="extras"? "Review" : "Continue";
+    next.textContent = s.intro? "Let's go" : s.review? "Create files" : s.id==="extras"? "Review" : "Continue";
+    next.disabled=false; delete next.dataset.mode; document.getElementById("backBtn").style.display="";
 
     body.innerHTML="";
     if (s.intro) body.appendChild(renderIntro());
@@ -504,6 +549,15 @@
         el.addEventListener("input",()=>{ A[f.k]=el.value; renderDoc(FIELD_SEC[f.k]); });
         wrap.appendChild(el);
       }
+    } else if (f.type==="memdir"){
+      const lab=document.createElement("label"); lab.className="q"; lab.textContent=f.q; wrap.appendChild(lab);
+      if (f.hint){ const h=document.createElement("div"); h.className="hint"; h.textContent=f.hint; wrap.appendChild(h); }
+      const el=document.createElement("input"); el.type="text"; el.value=memDirOverride;
+      el.placeholder = check&&check.ok ? (check.memory.guess||"") : "";
+      el.addEventListener("input",()=>{ memDirOverride=el.value;
+        // the path field's status line describes the memory dir too — refresh it
+        const pathEl=body.querySelector(".pathrow input"); if (pathEl) pathEl.dispatchEvent(new Event("input")); });
+      wrap.appendChild(el);
     } else if (f.type==="choice"){
       const lab=document.createElement("div"); lab.className="q"; lab.textContent=f.q; wrap.appendChild(lab);
       const box=document.createElement("div"); box.className="opts"+(f.row?" row":"");
@@ -574,16 +628,126 @@
     frag.appendChild(ul);
 
     const np=document.createElement("div"); np.className="note-private";
-    np.innerHTML='<span>🔒</span><span>If a file with the same name is already there, the finished tool shows you the difference and asks before changing anything — it never overwrites your work silently.</span>';
+    np.innerHTML='<span>🔒</span><span>Anything already there is shown below as a difference and is kept unless you choose to replace it. Nothing is written until you press the button.</span>';
     frag.appendChild(np);
+
+    const ex=document.createElement("div"); ex.className="existing"; ex.id="existing"; frag.appendChild(ex);
+    loadPlan(ex);
     return frag;
+  }
+
+  async function loadPlan(mount){
+    const next=document.getElementById("nextBtn"); next.disabled=true; plan=null;
+    try{
+      const r=await fetch("/plan"+location.search,{ method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({answers:A, memoryDir:memDirOverride}) });
+      plan=await r.json();
+    }catch{ plan=null; }
+    if (!mount.isConnected) return;               // the user moved on
+    mount.innerHTML="";
+    if (!plan||!plan.ok){
+      const w=document.createElement("div"); w.className="planwarn";
+      w.textContent = plan&&plan.reason==="empty" ? "Go back a step and choose where to save the files." : "That project folder can't be found. Go back a step and check the path.";
+      mount.appendChild(w); return;
+    }
+    const existing=plan.files.filter(f=>f.existing!==null);
+    const fresh={}; existing.forEach(f=>{ fresh[f.name]=decisions[f.name]||"keep"; }); decisions=fresh;
+    if (existing.length){
+      const h=document.createElement("h3"); h.textContent="Already there"; mount.appendChild(h);
+      const lead=document.createElement("p"); lead.className="lead"; lead.textContent="These files exist. Each is kept as it is unless you choose Replace."; mount.appendChild(lead);
+      existing.forEach(f=> mount.appendChild(renderExisting(f)));
+    }
+    next.disabled=false;
+  }
+
+  function renderExisting(f){
+    const box=document.createElement("div"); box.className="exfile";
+    const head=document.createElement("div"); head.className="exhead";
+    const c=document.createElement("code"); c.textContent=f.path; head.appendChild(c);
+    if (f.same){ const sm=document.createElement("span"); sm.className="same"; sm.textContent="already up to date"; head.appendChild(sm); box.appendChild(head); return box; }
+    const dec=document.createElement("div"); dec.className="decide";
+    [["keep","Keep mine"],["overwrite","Replace"]].forEach(([v,label])=>{
+      const l=document.createElement("label"); if(v==="overwrite") l.className="over";
+      const i=document.createElement("input"); i.type="radio"; i.name="dec-"+f.name; i.value=v; i.checked=decisions[f.name]===v;
+      i.addEventListener("change",()=>{ decisions[f.name]=v; });
+      l.appendChild(i); l.appendChild(document.createTextNode(label)); dec.appendChild(l);
+    });
+    head.appendChild(dec); box.appendChild(head);
+    const d=document.createElement("div"); d.className="diff";
+    D.lineDiff(f.existing.replace(/\r\n/g,"\n"), f.text).forEach(ln=>{
+      const row=document.createElement("div"); row.className= ln.t==="+"?"add": ln.t==="-"?"del":"ctx"; row.textContent=(ln.t==="+"?"+ ":ln.t==="-"?"- ":"  ")+ln.s; d.appendChild(row); });
+    box.appendChild(d);
+    return box;
+  }
+
+  async function createFiles(){
+    const next=document.getElementById("nextBtn"); if (next.disabled||!plan||!plan.ok) return;
+    next.disabled=true; next.textContent="Creating…";
+    let out=null;
+    try{
+      const r=await fetch("/write"+location.search,{ method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({answers:A, memoryDir:memDirOverride, decisions}) });
+      out=await r.json();
+    }catch{ out=null; }
+    if (!out||!out.ok){
+      next.disabled=false; next.textContent="Create files";
+      const w=document.createElement("div"); w.className="planwarn";
+      w.textContent="Nothing was written: "+(out&&out.message? out.message : out&&out.reason==="missing" ? "that project folder can't be found any more." : "the tool couldn't reach its own server. Is it still running in the terminal?");
+      document.getElementById("existing").prepend(w); return;
+    }
+    renderResults(out.results);
+  }
+
+  function renderResults(results){
+    document.getElementById("eyebrow").textContent="Done";
+    document.getElementById("stepTitle").textContent="Your files are in place.";
+    document.getElementById("stepSub").textContent="Here's what happened, file by file.";
+    document.getElementById("backBtn").style.display="none";
+    const next=document.getElementById("nextBtn"); next.disabled=false; next.textContent="Finish"; next.className="btn primary"; next.dataset.mode="done";
+    body.innerHTML="";
+    const ul=document.createElement("ul"); ul.className="results";
+    const words={ written:"Created", kept:"Kept yours", unchanged:"Already up to date", shown:"Shown below" };
+    results.forEach(r=>{ const li=document.createElement("li");
+      const b=document.createElement("span"); b.className="badge "+r.action; b.textContent=words[r.action]||r.action;
+      const t=document.createElement("span"); const c=document.createElement("code"); c.textContent=r.path||r.name; t.appendChild(c);
+      li.appendChild(b); li.appendChild(t); ul.appendChild(li); });
+    body.appendChild(ul);
+    results.filter(r=>r.action==="shown").forEach(r=>{
+      const w=document.createElement("div"); w.className="shownfile";
+      const sh=document.createElement("div"); sh.className="sh";
+      const c=document.createElement("code"); c.textContent=r.name; sh.appendChild(c);
+      const cp=document.createElement("button"); cp.className="minibtn"; cp.type="button"; cp.textContent="Copy";
+      cp.addEventListener("click",()=>{ navigator.clipboard.writeText(r.text).then(()=>{ cp.textContent="Copied ✓"; setTimeout(()=>cp.textContent="Copy",1600); }).catch(()=>{}); });
+      sh.appendChild(cp); w.appendChild(sh);
+      const ta=document.createElement("textarea"); ta.readOnly=true; ta.value=r.text; w.appendChild(ta);
+      body.appendChild(w);
+    });
+    if (results.some(r=>r.action==="shown")){
+      const n=document.createElement("div"); n.className="note-private";
+      n.innerHTML="<span>🔒</span><span>Claude Code's memory folder wasn't found, so these two weren't written. Save them into the memory folder Claude Code uses for this project, or point Hello Claude at a folder next time.</span>";
+      body.appendChild(n);
+    }
+    const dn=document.createElement("div"); dn.className="done-note";
+    dn.innerHTML="<b>Next:</b> open the project in Claude Code. It reads <code>CLAUDE.md</code> on its own at the start of every session — there's nothing to switch on.";
+    body.appendChild(dn);
+  }
+
+  async function finish(){
+    const next=document.getElementById("nextBtn"); next.disabled=true;
+    try{ await fetch("/done"+location.search,{ method:"POST" }); }catch{}
+    body.innerHTML="";
+    const dn=document.createElement("div"); dn.className="done-note";
+    dn.innerHTML="<b>Hello Claude has stopped.</b> You can close this tab.";
+    body.appendChild(dn);
+    next.style.display="none";
   }
 
   function renderMini(){ const m=document.getElementById("stepsMini"); m.innerHTML="";
     STEPS.forEach((_,i)=>{ const d=document.createElement("div"); d.className="dot"+(i<step?" done":"")+(i===step?" current":""); m.appendChild(d); }); }
 
   document.getElementById("nextBtn").addEventListener("click",()=>{
-    if (step<STEPS.length-1){ step++; renderStep(); window.scrollTo({top:0,behavior:"smooth"}); } else copyDoc();
+    const next=document.getElementById("nextBtn");
+    if (next.dataset.mode==="done") finish();
+    else if (step<STEPS.length-1){ step++; renderStep(); window.scrollTo({top:0,behavior:"smooth"}); }
+    else createFiles();
   });
   document.getElementById("backBtn").addEventListener("click",()=>{ if(step>0){ step--; renderStep(); } });
 

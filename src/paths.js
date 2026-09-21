@@ -64,14 +64,18 @@ export async function isDirectory(p) {
 /**
  * Everything the wizard needs to know about a target before it writes anything.
  * @param {string} input   what the user typed
- * @param {{ home?: string }} [opts]
+ * @param {{ home?: string, memoryDir?: string }} [opts]  memoryDir: the user's override, if any.
  */
 export async function checkTarget(input, opts = {}) {
   if (!input.trim()) return { ok: false, reason: "empty" };
   const resolved = resolveProjectPath(input, opts);
   if (!(await isDirectory(resolved))) return { ok: false, reason: "missing", resolved };
 
-  const memory = await memoryDirFor(resolved, opts);
+  const guess = await memoryDirFor(resolved, opts);
+  const override = (opts.memoryDir ?? "").trim();
+  const memory = override
+    ? { dir: resolveProjectPath(override, opts), available: true, convention: "override", guess: guess.dir }
+    : { ...guess, guess: guess.dir };
   /** @type {Record<string, boolean>} */
   const existing = {};
   for (const f of PROJECT_FILES) existing[f] = await exists(path.join(resolved, f));

@@ -8,7 +8,20 @@ import { start } from "../src/server.js";
 const args = new Set(process.argv.slice(2));
 const noOpen = args.has("--no-open");
 
-const { url, close } = await start();
+const { url, close } = await start({
+  onWrite(results) {
+    console.log("\nWritten:");
+    for (const r of results) {
+      const where = r.path ?? "(shown in the browser to place by hand)";
+      console.log(`  ${r.action.padEnd(9)} ${r.name.padEnd(26)} ${where}`);
+    }
+    console.log("");
+  },
+  onDone() {
+    console.log("Done. Open the project in Claude Code — it reads CLAUDE.md on its own.\n");
+    close(); process.exit(0);
+  },
+});
 
 console.log(`\nHello Claude is running at:\n\n  ${url}\n`);
 console.log(noOpen ? "Open that in your browser." : "Opening it in your browser. If nothing happens, open it yourself.");
